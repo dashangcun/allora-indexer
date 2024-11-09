@@ -35,6 +35,16 @@ const (
 	EcosystemTokenMintEvent EventType = "ecosystemTokenMint"
 	// RewardCurrentBlockEmissionEvent represents a reward current block emission event
 	RewardCurrentBlockEmissionEvent EventType = "rewardCurrentBlockEmission"
+	// ListeningCoefficientsEvent represents a listening coefficients event
+	ListeningCoefficientsEvent EventType = "listeningCoefficients"
+	// InfererNetworkRegretEvent represents an inferer network regret event
+	InfererNetworkRegretEvent EventType = "infererNetworkRegret"
+	// ForecasterNetworkRegretEvent represents a forecaster network regret event
+	ForecasterNetworkRegretEvent EventType = "forecasterNetworkRegret"
+	// NaiveInfererNetworkRegretEvent represents a naive inferer network regret event
+	NaiveInfererNetworkRegretEvent EventType = "naiveInfererNetworkRegret"
+	// TopicInitialRegretEvent represents a topic initial regret event
+	TopicInitialRegretEvent EventType = "topicInitialRegret"
 	// NoneEvent represents an event that doesn't need processing
 	NoneEvent EventType = "none"
 	// an invalid event type
@@ -47,17 +57,22 @@ type EventProcessing struct {
 }
 
 var event_whitelist = map[string]EventProcessing{
-	"EventScoresSet":                  {Type: ScoreEvent},
-	"EventRewardsSettled":             {Type: RewardEvent},
-	"EventNetworkLossSet":             {Type: NetworkLossEvent},
-	"EventForecastTaskScoreSet":       {Type: ForecastTaskScoreEvent},
-	"EventWorkerLastCommitSet":        {Type: ActorLastCommitEvent},
-	"EventReputerLastCommitSet":       {Type: ActorLastCommitEvent},
-	"EventTopicRewardsSet":            {Type: TopicRewardEvent},
-	"EventEMAScoresSet":               {Type: EMAScoreEvent},
-	"EventTokenomicsSet":              {Type: TokenomicsEvent},
-	"EventEcosystemTokenMintSet":      {Type: EcosystemTokenMintEvent},
-	"EventRewardCurrentBlockEmission": {Type: RewardCurrentBlockEmissionEvent},
+	"EventScoresSet":                    {Type: ScoreEvent},
+	"EventRewardsSettled":               {Type: RewardEvent},
+	"EventNetworkLossSet":               {Type: NetworkLossEvent},
+	"EventForecastTaskScoreSet":         {Type: ForecastTaskScoreEvent},
+	"EventWorkerLastCommitSet":          {Type: ActorLastCommitEvent},
+	"EventReputerLastCommitSet":         {Type: ActorLastCommitEvent},
+	"EventTopicRewardsSet":              {Type: TopicRewardEvent},
+	"EventEMAScoresSet":                 {Type: EMAScoreEvent},
+	"EventTokenomicsSet":                {Type: TokenomicsEvent},
+	"EventEcosystemTokenMintSet":        {Type: EcosystemTokenMintEvent},
+	"EventRewardCurrentBlockEmission":   {Type: RewardCurrentBlockEmissionEvent},
+	"EventListeningCoefficientsSet":     {Type: ListeningCoefficientsEvent},
+	"EventInfererNetworkRegretSet":      {Type: InfererNetworkRegretEvent},
+	"EventForecasterNetworkRegretSet":   {Type: ForecasterNetworkRegretEvent},
+	"EventNaiveInfererNetworkRegretSet": {Type: NaiveInfererNetworkRegretEvent},
+	"EventTopicInitialRegretSet":        {Type: TopicInitialRegretEvent},
 }
 
 type BlockResult struct {
