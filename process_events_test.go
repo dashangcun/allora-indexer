@@ -22,6 +22,12 @@ func TestFilterEvents(t *testing.T) {
 		"EventForecasterNetworkRegretSet":   {Type: ForecasterNetworkRegretEvent},
 		"EventNaiveInfererNetworkRegretSet": {Type: NaiveInfererNetworkRegretEvent},
 		"EventTopicInitialRegretSet":        {Type: TopicInitialRegretEvent},
+		"AddStakeRequest":                   {Type: AddStakeEvent},
+		"RemoveStakeRequest":                {Type: RemoveStakeEvent},
+		"CancelRemoveStakeRequest":          {Type: CancelRemoveStakeEvent},
+		"DelegateStakeRequest":              {Type: DelegateStakeEvent},
+		"RemoveDelegateStakeRequest":        {Type: RemoveDelegateStakeEvent},
+		"CancelRemoveDelegateStakeRequest":  {Type: CancelRemoveDelegateStakeEvent},
 	}
 
 	tests := []struct {
@@ -52,6 +58,12 @@ func TestFilterEvents(t *testing.T) {
 						{Type: "emissions.v5.EventForecasterNetworkRegretSet"},
 						{Type: "emissions.v5.EventNaiveInfererNetworkRegretSet"},
 						{Type: "emissions.v5.EventTopicInitialRegretSet"},
+						{Type: "emissions.v5.AddStakeRequest"},
+						{Type: "emissions.v5.RemoveStakeRequest"},
+						{Type: "emissions.v5.CancelRemoveStakeRequest"},
+						{Type: "emissions.v5.DelegateStakeRequest"},
+						{Type: "emissions.v5.RemoveDelegateStakeRequest"},
+						{Type: "emissions.v5.CancelRemoveDelegateStakeRequest"},
 					},
 					TxsBlockEvents: []TxEvent{
 						{Events: []Event{
@@ -76,6 +88,12 @@ func TestFilterEvents(t *testing.T) {
 				{Type: "emissions.v5.EventForecasterNetworkRegretSet"},
 				{Type: "emissions.v5.EventNaiveInfererNetworkRegretSet"},
 				{Type: "emissions.v5.EventTopicInitialRegretSet"},
+				{Type: "emissions.v5.AddStakeRequest"},
+				{Type: "emissions.v5.RemoveStakeRequest"},
+				{Type: "emissions.v5.CancelRemoveStakeRequest"},
+				{Type: "emissions.v5.DelegateStakeRequest"},
+				{Type: "emissions.v5.RemoveDelegateStakeRequest"},
+				{Type: "emissions.v5.CancelRemoveDelegateStakeRequest"},
 				{Type: "emissions.v2.EventScoresSet"},
 				{Type: "emissions.v4.EventEMAScoresSet"},
 			},
@@ -168,6 +186,56 @@ func TestFilterEvents(t *testing.T) {
 			},
 			expected: []Event{}, // Should not match any
 		},
+		{
+			name: "Staking events match",
+			events: &BlockResult{
+				Result: struct {
+					Height              string    `json:"height"`
+					FinalizeBlockEvents []Event   `json:"finalize_block_events"`
+					TxsBlockEvents      []TxEvent `json:"txs_results"`
+				}{
+					FinalizeBlockEvents: []Event{
+						{Type: "emissions.v5.AddStakeRequest"},
+						{Type: "emissions.v5.RemoveStakeRequest"},
+						{Type: "emissions.v5.CancelRemoveStakeRequest"},
+						{Type: "emissions.v5.DelegateStakeRequest"},
+						{Type: "emissions.v5.RemoveDelegateStakeRequest"},
+						{Type: "emissions.v5.CancelRemoveDelegateStakeRequest"},
+					},
+				},
+			},
+			expected: []Event{
+				{Type: "emissions.v5.AddStakeRequest"},
+				{Type: "emissions.v5.RemoveStakeRequest"},
+				{Type: "emissions.v5.CancelRemoveStakeRequest"},
+				{Type: "emissions.v5.DelegateStakeRequest"},
+				{Type: "emissions.v5.RemoveDelegateStakeRequest"},
+				{Type: "emissions.v5.CancelRemoveDelegateStakeRequest"},
+			},
+		},
+		{
+			name: "Mixed staking and other events",
+			events: &BlockResult{
+				Result: struct {
+					Height              string    `json:"height"`
+					FinalizeBlockEvents []Event   `json:"finalize_block_events"`
+					TxsBlockEvents      []TxEvent `json:"txs_results"`
+				}{
+					FinalizeBlockEvents: []Event{
+						{Type: "emissions.v5.AddStakeRequest"},
+						{Type: "emissions.v1.EventScoresSet"},
+						{Type: "emissions.v5.DelegateStakeRequest"},
+						{Type: "emissions.v1.EventRewardsSettled"},
+					},
+				},
+			},
+			expected: []Event{
+				{Type: "emissions.v5.AddStakeRequest"},
+				{Type: "emissions.v1.EventScoresSet"},
+				{Type: "emissions.v5.DelegateStakeRequest"},
+				{Type: "emissions.v1.EventRewardsSettled"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -210,6 +278,36 @@ func TestGetBaseEventType(t *testing.T) {
 			name:      "Invalid event type",
 			eventType: "InvalidEventType",
 			expected:  string(InvalidType), // Expecting InvalidType
+		},
+		{
+			name:      "Valid AddStake event type with version",
+			eventType: "emissions.v5.AddStakeRequest",
+			expected:  "AddStakeRequest",
+		},
+		{
+			name:      "Valid DelegateStake event type with version",
+			eventType: "emissions.v5.DelegateStakeRequest",
+			expected:  "DelegateStakeRequest",
+		},
+		{
+			name:      "Valid RemoveStake event type with two-digit version",
+			eventType: "emissions.v5.RemoveStakeRequest",
+			expected:  "RemoveStakeRequest",
+		},
+		{
+			name:      "Valid CancelRemoveStake event type with version",
+			eventType: "emissions.v5.CancelRemoveStakeRequest",
+			expected:  "CancelRemoveStakeRequest",
+		},
+		{
+			name:      "Valid RemoveDelegateStake event type with version",
+			eventType: "emissions.v5.RemoveDelegateStakeRequest",
+			expected:  "RemoveDelegateStakeRequest",
+		},
+		{
+			name:      "Valid CancelRemoveDelegateStake event type with version",
+			eventType: "emissions.v5.CancelRemoveDelegateStakeRequest",
+			expected:  "CancelRemoveDelegateStakeRequest",
 		},
 	}
 

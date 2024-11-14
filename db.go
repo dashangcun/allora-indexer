@@ -81,6 +81,7 @@ const (
 	TB_FORECASTER_NETWORK_REGRET     = "forecaster_network_regret"
 	TB_NAIVE_INFERER_NETWORK_REGRET  = "naive_inferer_network_regret"
 	TB_TOPIC_INITIAL_REGRET          = "topic_initial_regret"
+	TB_REPUTER_STAKES                = "reputer_stakes"
 )
 
 var dbPool *pgxpool.Pool //*pgx.Conn
@@ -393,7 +394,6 @@ func createMessagesTablesSQL() string {
 	// 	FOREIGN KEY (body_id) REFERENCES messages(id),
 	// 	FOREIGN KEY (auth_info_id) REFERENCES auth_info(id)
 	// );
-
 }
 
 func createEventsTablesSQL() string {
@@ -561,6 +561,16 @@ func createEventsTablesSQL() string {
 		id SERIAL PRIMARY KEY,
 		height_tx BIGINT,
 		regret NUMERIC(72,18)
+	);
+
+	CREATE TABLE IF NOT EXISTS ` + TB_REPUTER_STAKES + ` (
+		id SERIAL PRIMARY KEY,
+		type TEXT NOT NULL,
+		topic_id INTEGER NOT NULL,
+		sender TEXT NOT NULL,
+		amount NUMERIC(72,18) NULL,  -- Made nullable
+		reputer_address TEXT NULL,   -- Made nullable
+		height INTEGER NOT NULL
 	);
 	`
 }
@@ -749,6 +759,30 @@ func isTopicInitialRegretEvent(event EventRecord) bool {
 	return isEventType(event.Type, "emissions.v", "EventTopicInitialRegretSet")
 }
 
+func isAddStakeEvent(event EventRecord) bool {
+	return isEventType(event.Type, "emissions.v", "AddStake")
+}
+
+func isRemoveStakeEvent(event EventRecord) bool {
+	return isEventType(event.Type, "emissions.v", "RemoveStake")
+}
+
+func isCancelRemoveStakeEvent(event EventRecord) bool {
+	return isEventType(event.Type, "emissions.v", "CancelRemoveStake")
+}
+
+func isDelegateStakeEvent(event EventRecord) bool {
+	return isEventType(event.Type, "emissions.v", "DelegateStake")
+}
+
+func isRemoveDelegateStakeEvent(event EventRecord) bool {
+	return isEventType(event.Type, "emissions.v", "RemoveDelegateStake")
+}
+
+func isCancelRemoveDelegateStakeEvent(event EventRecord) bool {
+	return isEventType(event.Type, "emissions.v", "CancelRemoveDelegateStake")
+}
+
 func insertEvents(events []EventRecord) error {
 	var scoreEvents []EventRecord
 	var rewardEvents []EventRecord
@@ -765,6 +799,13 @@ func insertEvents(events []EventRecord) error {
 	var forecasterNetworkRegretEvents []EventRecord
 	var naiveInfererNetworkRegretEvents []EventRecord
 	var topicInitialRegretEvents []EventRecord
+	var addStakeEvents []EventRecord
+	var removeStakeEvents []EventRecord
+	var cancelRemoveStakeEvents []EventRecord
+	var delegateStakeEvents []EventRecord
+	var removeDelegateStakeEvents []EventRecord
+	var cancelRemoveDelegateStakeEvents []EventRecord
+
 	// For inserting events in batch:
 	var insertStatements []string
 	var values []interface{}
@@ -802,6 +843,18 @@ func insertEvents(events []EventRecord) error {
 			naiveInfererNetworkRegretEvents = append(naiveInfererNetworkRegretEvents, event) // Function to check if it's a naive inferer network regret event
 		} else if isTopicInitialRegretEvent(event) {
 			topicInitialRegretEvents = append(topicInitialRegretEvents, event) // Function to check if it's a topic initial regret event
+		} else if isAddStakeEvent(event) {
+			addStakeEvents = append(addStakeEvents, event)
+		} else if isRemoveStakeEvent(event) {
+			removeStakeEvents = append(removeStakeEvents, event)
+		} else if isCancelRemoveStakeEvent(event) {
+			cancelRemoveStakeEvents = append(cancelRemoveStakeEvents, event)
+		} else if isDelegateStakeEvent(event) {
+			delegateStakeEvents = append(delegateStakeEvents, event)
+		} else if isRemoveDelegateStakeEvent(event) {
+			removeDelegateStakeEvents = append(removeDelegateStakeEvents, event)
+		} else if isCancelRemoveDelegateStakeEvent(event) {
+			cancelRemoveDelegateStakeEvents = append(cancelRemoveDelegateStakeEvents, event)
 		} else {
 			log.Info().Msg("Unrecognized event, ignoring")
 			continue
@@ -952,6 +1005,44 @@ func insertEvents(events []EventRecord) error {
 			log.Error().Err(err).Msg("failed to insert topic initial regret")
 		}
 	}
+
+	if len(addStakeEvents) > 0 {
+		err := insertAddStake(addStakeEvents)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to insert add stake events")
+		}
+	}
+	if len(removeStakeEvents) > 0 {
+		err := insertRemoveStake(removeStakeEvents)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to insert remove stake events")
+		}
+	}
+	if len(cancelRemoveStakeEvents) > 0 {
+		err := insertCancelRemoveStake(cancelRemoveStakeEvents)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to insert cancel remove stake events")
+		}
+	}
+	if len(delegateStakeEvents) > 0 {
+		err := insertDelegateStake(delegateStakeEvents)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to insert delegate stake events")
+		}
+	}
+	if len(removeDelegateStakeEvents) > 0 {
+		err := insertRemoveDelegateStake(removeDelegateStakeEvents)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to insert remove delegate stake events")
+		}
+	}
+	if len(cancelRemoveDelegateStakeEvents) > 0 {
+		err := insertCancelRemoveDelegateStake(cancelRemoveDelegateStakeEvents)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to insert cancel remove delegate stake events")
+		}
+	}
+
 	return nil
 }
 
@@ -1812,6 +1903,449 @@ func insertTopicInitialRegret(events []EventRecord) error {
 	} else {
 		log.Info().Msg("No topic initial regret event to insert")
 	}
+	return nil
+}
+
+func insertAddStake(events []EventRecord) error {
+	log.Info().Msg("Inserting add stake events")
+	var insertStatements []string
+	var values []interface{}
+
+	placeholderCounter := 1 // Placeholder index starts at 1 in PostgreSQL
+	for _, event := range events {
+		log.Trace().Interface("Event add stake", event).Msg("Processing event add stake")
+		var attributes []Attribute
+		err := json.Unmarshal(event.Data, &attributes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+
+		var sender string
+		var topicID int64
+		var amount *big.Float
+
+		for _, attr := range attributes {
+			switch attr.Key {
+			case "sender":
+				sender = strings.Trim(attr.Value, "\"")
+			case "topic_id":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				topicID, err = strconv.ParseInt(cleanedValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse topic_id: %w", err)
+				}
+			case "amount":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				amount = new(big.Float)
+				_, ok := amount.SetString(cleanedValue)
+				if !ok {
+					return fmt.Errorf("failed to parse amount: %s", cleanedValue)
+				}
+			}
+		}
+
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+			placeholderCounter,
+			placeholderCounter+1,
+			placeholderCounter+2,
+			placeholderCounter+3,
+			placeholderCounter+4,
+			placeholderCounter+5)
+		insertStatements = append(insertStatements, newStmt)
+		values = append(values,
+			"AddStake",           // type TEXT
+			topicID,              // topic_id INTEGER
+			sender,               // sender TEXT
+			amount.Text('f', 18), // amount NUMERIC(72,18) - explicitly set 18 decimal places
+			sender,               // reputer_address TEXT (same as sender for AddStake)
+			event.Height,         // height INTEGER
+		)
+		placeholderCounter += 6
+	}
+
+	if len(insertStatements) > 0 {
+		sqlStatement := fmt.Sprintf(`
+			INSERT INTO %s (type, topic_id, sender, amount, reputer_address, height) 
+				VALUES %s`, TB_REPUTER_STAKES, strings.Join(insertStatements, ","))
+
+		log.Debug().Str("SQL Statement", sqlStatement).Interface("Values", values).Msg("Executing batch insert for add stake events")
+
+		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
+		if err != nil {
+			return fmt.Errorf("add stake insert failed: %v", err)
+		}
+	} else {
+		log.Info().Msg("No add stake events to insert")
+	}
+
+	return nil
+}
+
+func insertRemoveStake(events []EventRecord) error {
+	log.Info().Msg("Inserting remove stake events")
+	var insertStatements []string
+	var values []interface{}
+
+	placeholderCounter := 1
+	for _, event := range events {
+		log.Trace().Interface("Event remove stake", event).Msg("Processing event remove stake")
+		var attributes []Attribute
+		err := json.Unmarshal(event.Data, &attributes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+
+		var sender string
+		var topicID int64
+		var amount *big.Float
+
+		for _, attr := range attributes {
+			switch attr.Key {
+			case "sender":
+				sender = strings.Trim(attr.Value, "\"")
+			case "topic_id":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				topicID, err = strconv.ParseInt(cleanedValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse topic_id: %w", err)
+				}
+			case "amount":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				amount = new(big.Float)
+				_, ok := amount.SetString(cleanedValue)
+				if !ok {
+					return fmt.Errorf("failed to parse amount: %s", cleanedValue)
+				}
+			}
+		}
+
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+			placeholderCounter,
+			placeholderCounter+1,
+			placeholderCounter+2,
+			placeholderCounter+3,
+			placeholderCounter+4,
+			placeholderCounter+5)
+		insertStatements = append(insertStatements, newStmt)
+		values = append(values,
+			"RemoveStake",        // type TEXT
+			topicID,              // topic_id INTEGER
+			sender,               // sender TEXT
+			amount.Text('f', 18), // amount NUMERIC(72,18)
+			sender,               // reputer_address TEXT (same as sender for RemoveStake)
+			event.Height,         // height INTEGER
+		)
+		placeholderCounter += 6
+	}
+
+	if len(insertStatements) > 0 {
+		sqlStatement := fmt.Sprintf(`
+            INSERT INTO %s (type, topic_id, sender, amount, reputer_address, height) 
+            VALUES %s`, TB_REPUTER_STAKES, strings.Join(insertStatements, ","))
+
+		log.Debug().Str("SQL Statement", sqlStatement).Interface("Values", values).Msg("Executing batch insert for remove stake events")
+
+		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
+		if err != nil {
+			return fmt.Errorf("remove stake insert failed: %v", err)
+		}
+	} else {
+		log.Info().Msg("No remove stake events to insert")
+	}
+
+	return nil
+}
+
+func insertCancelRemoveStake(events []EventRecord) error {
+	log.Info().Msg("Inserting cancel remove stake events")
+	var insertStatements []string
+	var values []interface{}
+
+	placeholderCounter := 1
+	for _, event := range events {
+		log.Trace().Interface("Event cancel remove stake", event).Msg("Processing event cancel remove stake")
+		var attributes []Attribute
+		err := json.Unmarshal(event.Data, &attributes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+
+		var sender string
+		var topicID int64
+
+		for _, attr := range attributes {
+			switch attr.Key {
+			case "sender":
+				sender = strings.Trim(attr.Value, "\"")
+			case "topic_id":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				topicID, err = strconv.ParseInt(cleanedValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse topic_id: %w", err)
+				}
+			}
+		}
+
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+			placeholderCounter,
+			placeholderCounter+1,
+			placeholderCounter+2,
+			placeholderCounter+3,
+			placeholderCounter+4,
+			placeholderCounter+5)
+		insertStatements = append(insertStatements, newStmt)
+		values = append(values,
+			"CancelRemoveStake", // type TEXT
+			topicID,             // topic_id INTEGER
+			sender,              // sender TEXT
+			nil,                 // amount NUMERIC(72,18) - NULL since not in request
+			sender,              // reputer_address TEXT (same as sender)
+			event.Height,        // height INTEGER
+		)
+		placeholderCounter += 6
+	}
+
+	if len(insertStatements) > 0 {
+		sqlStatement := fmt.Sprintf(`
+            INSERT INTO %s (type, topic_id, sender, amount, reputer_address, height) 
+            VALUES %s`, TB_REPUTER_STAKES, strings.Join(insertStatements, ","))
+
+		log.Debug().Str("SQL Statement", sqlStatement).Interface("Values", values).Msg("Executing batch insert for cancel remove stake events")
+
+		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
+		if err != nil {
+			return fmt.Errorf("cancel remove stake insert failed: %v", err)
+		}
+	} else {
+		log.Info().Msg("No cancel remove stake events to insert")
+	}
+
+	return nil
+}
+
+func insertDelegateStake(events []EventRecord) error {
+	log.Info().Msg("Inserting delegate stake events")
+	var insertStatements []string
+	var values []interface{}
+
+	placeholderCounter := 1
+	for _, event := range events {
+		log.Trace().Interface("Event delegate stake", event).Msg("Processing event delegate stake")
+		var attributes []Attribute
+		err := json.Unmarshal(event.Data, &attributes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+
+		var sender string
+		var topicID int64
+		var reputer string
+		var amount *big.Float
+
+		for _, attr := range attributes {
+			switch attr.Key {
+			case "sender":
+				sender = strings.Trim(attr.Value, "\"")
+			case "topic_id":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				topicID, err = strconv.ParseInt(cleanedValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse topic_id: %w", err)
+				}
+			case "reputer":
+				reputer = strings.Trim(attr.Value, "\"")
+			case "amount":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				amount = new(big.Float)
+				_, ok := amount.SetString(cleanedValue)
+				if !ok {
+					return fmt.Errorf("failed to parse amount: %s", cleanedValue)
+				}
+			}
+		}
+
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+			placeholderCounter,
+			placeholderCounter+1,
+			placeholderCounter+2,
+			placeholderCounter+3,
+			placeholderCounter+4,
+			placeholderCounter+5)
+		insertStatements = append(insertStatements, newStmt)
+		values = append(values,
+			"DelegateStake",      // type TEXT
+			topicID,              // topic_id INTEGER
+			sender,               // sender TEXT
+			amount.Text('f', 18), // amount NUMERIC(72,18)
+			reputer,              // reputer_address TEXT
+			event.Height,         // height INTEGER
+		)
+		placeholderCounter += 6
+	}
+
+	if len(insertStatements) > 0 {
+		sqlStatement := fmt.Sprintf(`
+            INSERT INTO %s (type, topic_id, sender, amount, reputer_address, height) 
+            VALUES %s`, TB_REPUTER_STAKES, strings.Join(insertStatements, ","))
+
+		log.Debug().Str("SQL Statement", sqlStatement).Interface("Values", values).Msg("Executing batch insert for delegate stake events")
+
+		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
+		if err != nil {
+			return fmt.Errorf("delegate stake insert failed: %v", err)
+		}
+	} else {
+		log.Info().Msg("No delegate stake events to insert")
+	}
+
+	return nil
+}
+
+func insertRemoveDelegateStake(events []EventRecord) error {
+	log.Info().Msg("Inserting remove delegate stake events")
+	var insertStatements []string
+	var values []interface{}
+
+	placeholderCounter := 1
+	for _, event := range events {
+		log.Trace().Interface("Event remove delegate stake", event).Msg("Processing event remove delegate stake")
+		var attributes []Attribute
+		err := json.Unmarshal(event.Data, &attributes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+
+		var sender string
+		var reputer string
+		var topicID int64
+		var amount *big.Float
+
+		for _, attr := range attributes {
+			switch attr.Key {
+			case "sender":
+				sender = strings.Trim(attr.Value, "\"")
+			case "reputer":
+				reputer = strings.Trim(attr.Value, "\"")
+			case "topic_id":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				topicID, err = strconv.ParseInt(cleanedValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse topic_id: %w", err)
+				}
+			case "amount":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				amount = new(big.Float)
+				_, ok := amount.SetString(cleanedValue)
+				if !ok {
+					return fmt.Errorf("failed to parse amount: %s", cleanedValue)
+				}
+			}
+		}
+
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+			placeholderCounter,
+			placeholderCounter+1,
+			placeholderCounter+2,
+			placeholderCounter+3,
+			placeholderCounter+4,
+			placeholderCounter+5)
+		insertStatements = append(insertStatements, newStmt)
+		values = append(values,
+			"RemoveDelegateStake", // type TEXT
+			topicID,               // topic_id INTEGER
+			sender,                // sender TEXT
+			amount.Text('f', 18),  // amount NUMERIC(72,18)
+			reputer,               // reputer_address TEXT
+			event.Height,          // height INTEGER
+		)
+		placeholderCounter += 6
+	}
+
+	if len(insertStatements) > 0 {
+		sqlStatement := fmt.Sprintf(`
+            INSERT INTO %s (type, topic_id, sender, amount, reputer_address, height) 
+            VALUES %s`, TB_REPUTER_STAKES, strings.Join(insertStatements, ","))
+
+		log.Debug().Str("SQL Statement", sqlStatement).Interface("Values", values).Msg("Executing batch insert for remove delegate stake events")
+
+		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
+		if err != nil {
+			return fmt.Errorf("remove delegate stake insert failed: %v", err)
+		}
+	} else {
+		log.Info().Msg("No remove delegate stake events to insert")
+	}
+
+	return nil
+}
+
+func insertCancelRemoveDelegateStake(events []EventRecord) error {
+	log.Info().Msg("Inserting cancel remove delegate stake events")
+	var insertStatements []string
+	var values []interface{}
+
+	placeholderCounter := 1
+	for _, event := range events {
+		log.Trace().Interface("Event cancel remove delegate stake", event).Msg("Processing event cancel remove delegate stake")
+		var attributes []Attribute
+		err := json.Unmarshal(event.Data, &attributes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+
+		var sender string
+		var topicID int64
+		var reputer string
+
+		for _, attr := range attributes {
+			switch attr.Key {
+			case "sender":
+				sender = strings.Trim(attr.Value, "\"")
+			case "topic_id":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				topicID, err = strconv.ParseInt(cleanedValue, 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse topic_id: %w", err)
+				}
+			case "reputer":
+				reputer = strings.Trim(attr.Value, "\"")
+			}
+		}
+
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+			placeholderCounter,
+			placeholderCounter+1,
+			placeholderCounter+2,
+			placeholderCounter+3,
+			placeholderCounter+4,
+			placeholderCounter+5)
+		insertStatements = append(insertStatements, newStmt)
+		values = append(values,
+			"CancelRemoveDelegateStake", // type TEXT
+			topicID,                     // topic_id INTEGER
+			sender,                      // sender TEXT
+			nil,                         // amount NUMERIC(72,18) - NULL since not in request
+			reputer,                     // reputer_address TEXT
+			event.Height,                // height INTEGER
+		)
+		placeholderCounter += 6
+	}
+
+	if len(insertStatements) > 0 {
+		sqlStatement := fmt.Sprintf(`
+            INSERT INTO %s (type, topic_id, sender, amount, reputer_address, height) 
+            VALUES %s`, TB_REPUTER_STAKES, strings.Join(insertStatements, ","))
+
+		log.Debug().Str("SQL Statement", sqlStatement).Interface("Values", values).Msg("Executing batch insert for cancel remove delegate stake events")
+
+		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
+		if err != nil {
+			return fmt.Errorf("cancel remove delegate stake insert failed: %v", err)
+		}
+	} else {
+		log.Info().Msg("No cancel remove delegate stake events to insert")
+	}
+
 	return nil
 }
 
