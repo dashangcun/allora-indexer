@@ -54,6 +54,11 @@ const (
 	RemoveDelegateStakeEvent       EventType = "removeDelegateStake"
 	CancelRemoveDelegateStakeEvent EventType = "cancelRemoveDelegateStake"
 
+	// Validator commission events
+	ValidatorRewardsEvent         EventType = "rewards"
+	ValidatorCommissionEvent      EventType = "commission"
+	ValidatorWithdrawRewardsEvent EventType = "withdrawRewards"
+
 	// NoneEvent represents an event that doesn't need processing
 	NoneEvent EventType = "none"
 	// an invalid event type
@@ -90,6 +95,11 @@ var event_whitelist = map[string]EventProcessing{
 	"DelegateStakeRequest":             {Type: DelegateStakeEvent},
 	"RemoveDelegateStakeRequest":       {Type: RemoveDelegateStakeEvent},
 	"CancelRemoveDelegateStakeRequest": {Type: CancelRemoveDelegateStakeEvent},
+
+	// Validator commission events
+	"rewards":          {Type: ValidatorRewardsEvent},
+	"commission":       {Type: ValidatorCommissionEvent},
+	"withdraw_rewards": {Type: ValidatorWithdrawRewardsEvent},
 }
 
 type BlockResult struct {
@@ -181,6 +191,9 @@ func getBaseEventType(eventType string) string {
 	parts := strings.Split(eventType, ".")
 	if len(parts) > 1 {
 		return parts[len(parts)-1] // Return the last part, e.g., "EventScoresSet"
+	} else if eventType == "rewards" || eventType == "commission" || eventType == "withdraw_rewards" {
+		// cosmos SDK events doesn't have the same prefix as allora events
+		return eventType
 	}
 	return string(InvalidType) // Return InvalidType for invalid types
 }
