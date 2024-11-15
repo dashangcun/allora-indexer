@@ -809,17 +809,17 @@ func isCancelRemoveDelegateStakeEvent(event EventRecord) bool {
 }
 
 func isValidatorRewardsEvent(event EventRecord) bool {
-	// cosmos SDK events doesn't have the same prefix as allora events
+	// cosmos SDK events don't have the same prefix as allora events
 	return event.Type == "rewards"
 }
 
 func isValidatorCommissionEvent(event EventRecord) bool {
-	// cosmos SDK events doesn't have the same prefix as allora events
+	// cosmos SDK events don't have the same prefix as allora events
 	return event.Type == "commission"
 }
 
 func isValidatorWithdrawRewardsEvent(event EventRecord) bool {
-	// cosmos SDK events doesn't have the same prefix as allora events
+	// cosmos SDK events don't have the same prefix as allora events
 	return event.Type == "withdraw_rewards"
 }
 
