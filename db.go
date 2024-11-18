@@ -336,7 +336,7 @@ func createMessagesTablesSQL() string {
 		signature VARCHAR(255),
 		reputer  VARCHAR(255),
 		topic_id INT,
-		extra_data  VARCHAR(255),
+		extra_data VARCHAR(255),
 		naive_value  VARCHAR(255),
 		combined_value    VARCHAR(255),
 		reputer_request_worker_nonce  INT,
@@ -1898,25 +1898,11 @@ func insertNetworkRegret(events []EventRecord, tableName string) error {
 				if err != nil {
 					return fmt.Errorf("failed to unmarshal addresses: %w", err)
 				}
-				// Clean addresses
-				for i, addr := range addresses {
-					addresses[i] = strings.Trim(addr, "\"")
-				}
 			case "regrets":
 				var rawRegrets []string
 				err = json.Unmarshal([]byte(attr.Value), &rawRegrets)
 				if err != nil {
 					return fmt.Errorf("failed to unmarshal regrets: %w", err)
-				}
-
-				for _, rawRegret := range rawRegrets {
-					regret := new(big.Float)
-					_, ok := regret.SetString(strings.Trim(rawRegret, "\""))
-					if !ok {
-						return fmt.Errorf("failed to parse regret value: %s", rawRegret)
-					}
-					// Store as high-precision string
-					regrets = append(regrets, regret.Text('f', 18))
 				}
 			}
 		}
