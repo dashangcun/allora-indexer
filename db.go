@@ -1794,12 +1794,12 @@ func insertRewardCurrentBlockEmission(events []EventRecord) error {
 	return nil
 }
 
-func insertListeningCoefficients(events []EventRecord) error { // TODO: Implement
+func insertListeningCoefficients(events []EventRecord) error {
 	log.Info().Msg("Inserting listening coefficients")
 	var insertStatements []string
 	var values []interface{}
 
-	placeholderCounter := 1 // Placeholder index starts at 1 in PostgreSQL
+	placeholderCounter := 1
 	for _, event := range events {
 		log.Trace().Interface("Event listening coefficients", event).Msg("Processing event listening coefficients")
 		var attributes []Attribute
@@ -1812,7 +1812,8 @@ func insertListeningCoefficients(events []EventRecord) error { // TODO: Implemen
 		var topicID int64
 		var blockHeight uint64
 		var addresses []string
-		var coefficients []big.Float
+		var coefficients []string
+
 		for _, attr := range attributes {
 			switch attr.Key {
 			case "actor_type":
@@ -1840,23 +1841,37 @@ func insertListeningCoefficients(events []EventRecord) error { // TODO: Implemen
 				}
 			}
 		}
-		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", placeholderCounter, placeholderCounter+1, placeholderCounter+2, placeholderCounter+3, placeholderCounter+4)
+
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)",
+			placeholderCounter,
+			placeholderCounter+1,
+			placeholderCounter+2,
+			placeholderCounter+3,
+			placeholderCounter+4)
 		insertStatements = append(insertStatements, newStmt)
-		values = append(values, actorType, topicID, blockHeight, addresses, coefficients)
-		placeholderCounter += 5 // Increase counter for next row
+		values = append(values,
+			actorType,    // actor_type
+			topicID,      // topic_id
+			blockHeight,  // block_height
+			addresses,    // addresses
+			coefficients, // coefficients
+		)
+		placeholderCounter += 5 // Adjusted to match the number of values
 	}
 
 	if len(insertStatements) > 0 {
 		sqlStatement := fmt.Sprintf(`
-			INSERT INTO %s (height_tx, actor_type, topic_id, block_height, addresses, coefficients) 
+			INSERT INTO %s (actor_type, topic_id, block_height, addresses, coefficients) 
 			VALUES %s`, TB_LISTENING_COEFFICIENTS, strings.Join(insertStatements, ","))
+
 		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
 		if err != nil {
-			return fmt.Errorf("failed to insert listening coefficients event")
+			return fmt.Errorf("failed to insert listening coefficients event: %v", err)
 		}
 	} else {
 		log.Info().Msg("No listening coefficients event to insert")
 	}
+
 	return nil
 }
 
@@ -1899,8 +1914,7 @@ func insertNetworkRegret(events []EventRecord, tableName string) error {
 					return fmt.Errorf("failed to unmarshal addresses: %w", err)
 				}
 			case "regrets":
-				var rawRegrets []string
-				err = json.Unmarshal([]byte(attr.Value), &rawRegrets)
+				err = json.Unmarshal([]byte(attr.Value), &regrets)
 				if err != nil {
 					return fmt.Errorf("failed to unmarshal regrets: %w", err)
 				}
