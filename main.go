@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/allora-network/allora-indexer/types"
 	"github.com/spf13/pflag"
 
 	"github.com/rs/zerolog"
@@ -105,6 +106,9 @@ func run() error {
 			},
 			"topicById": {
 				Parts: []string{"{cliApp}", "query", "emissions", "topic", "--node", "{node}", "--output", "json"}, // Requires "{topic}"
+			},
+			"txsByHeight": {
+				Parts: []string{"{cliApp}", "query", "txs", "--query", "tx.height={height}", "--node", "{node}", "--output", "json"},
 			},
 		},
 	}
@@ -281,6 +285,17 @@ func worker(ctx context.Context, wgBlocks *sync.WaitGroup, heightsChan <-chan ui
 
 			log.Info().Msgf("Write height: %d", height)
 
+			txsResults, err := fetchTxsResults(config, height)
+			if err != nil {
+				log.Error().Err(err).Msgf("Worker: Failed to fetchTxsResults, height: %d", height)
+				continue
+			}
+
+			txsResultsMap := make(map[string]types.TxResult)
+			for _, tx := range txsResults {
+				txsResultsMap[tx.Hash] = tx
+			}
+
 			if len(block.Data.Txs) > 0 {
 				log.Info().Msgf("Processing txs at height: %d", height)
 				wgTxs := sync.WaitGroup{}
@@ -290,8 +305,8 @@ func worker(ctx context.Context, wgBlocks *sync.WaitGroup, heightsChan <-chan ui
 					wgTxs.Add(1)
 					go func(encTx string) {
 						defer wgTxs.Done()
-						defer func() { <-txSemaphore }()             // Release the token
-						err := processTx(ctx, &wgTxs, height, encTx) // Pass context and wait group
+						defer func() { <-txSemaphore }()                            // Release the token
+						err := processTx(ctx, &wgTxs, height, encTx, txsResultsMap) // Pass context and wait group
 						if err != nil {
 							log.Error().Err(err).Msgf("Failed to process transaction at height: %d", height)
 						}
