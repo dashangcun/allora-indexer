@@ -578,6 +578,7 @@ func createEventsTablesSQL() string {
 		sender TEXT NOT NULL,
 		amount NUMERIC(72,18) NULL,
 		reputer_address TEXT NULL,
+		delegator_address TEXT NULL,
 		height INTEGER NOT NULL
 	);
 
