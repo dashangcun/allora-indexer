@@ -46,14 +46,6 @@ const (
 	// TopicInitialRegretEvent represents a topic initial regret event
 	TopicInitialRegretEvent EventType = "topicInitialRegret"
 
-	// Staking event types
-	AddStakeEvent                  EventType = "addStake"
-	RemoveStakeEvent               EventType = "removeStake"
-	CancelRemoveStakeEvent         EventType = "cancelRemoveStake"
-	DelegateStakeEvent             EventType = "delegateStake"
-	RemoveDelegateStakeEvent       EventType = "removeDelegateStake"
-	CancelRemoveDelegateStakeEvent EventType = "cancelRemoveDelegateStake"
-
 	// Validator commission events
 	ValidatorRewardsEvent         EventType = "rewards"
 	ValidatorCommissionEvent      EventType = "commission"
@@ -87,14 +79,6 @@ var event_whitelist = map[string]EventProcessing{
 	"EventForecasterNetworkRegretSet":   {Type: ForecasterNetworkRegretEvent},
 	"EventNaiveInfererNetworkRegretSet": {Type: NaiveInfererNetworkRegretEvent},
 	"EventTopicInitialRegretSet":        {Type: TopicInitialRegretEvent},
-
-	// Staking events
-	"AddStakeRequest":                  {Type: AddStakeEvent},
-	"RemoveStakeRequest":               {Type: RemoveStakeEvent},
-	"CancelRemoveStakeRequest":         {Type: CancelRemoveStakeEvent},
-	"DelegateStakeRequest":             {Type: DelegateStakeEvent},
-	"RemoveDelegateStakeRequest":       {Type: RemoveDelegateStakeEvent},
-	"CancelRemoveDelegateStakeRequest": {Type: CancelRemoveDelegateStakeEvent},
 
 	// Validator commission events
 	"rewards":          {Type: ValidatorRewardsEvent},
