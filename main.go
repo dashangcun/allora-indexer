@@ -108,7 +108,8 @@ func run() error {
 				Parts: []string{"{cliApp}", "query", "emissions", "topic", "--node", "{node}", "--output", "json"}, // Requires "{topic}"
 			},
 			"txsByHeight": {
-				Parts: []string{"{cliApp}", "query", "txs", "--query", "tx.height={height}", "--node", "{node}", "--output", "json"},
+				// Keep {page} as last part to make it easier to update the page number
+				Parts: []string{"{cliApp}", "query", "txs", "--query", "tx.height={height}", "--node", "{node}", "--output", "json", "--page", "{page}"},
 			},
 		},
 	}

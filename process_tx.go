@@ -736,21 +736,35 @@ func fetchTxsResults(config ClientConfig, height uint64) ([]types.TxResult, erro
 		}
 	}
 
-	// Execute the command with the updated height
-	log.Info().Str("commandName", "txsByHeight").Msgf("Fetching txs at height %s", heightStr)
-	output, err := ExecuteCommand(config.CliApp, config.Node, txsCommand)
-	if err != nil {
-		log.Error().Err(err).Msgf("Failed to fetch txs at height %s", heightStr)
-		return []types.TxResult{}, err
+	page := 1
+	txsResults := []types.TxResult{}
+	for {
+		// Assuming the last part of the command is the page number
+		txsCommand[len(txsCommand)-1] = strconv.Itoa(page)
+
+		// Execute the command with the updated height
+		log.Info().Str("commandName", "txsByHeight").Msgf("Fetching txs at height %s", heightStr)
+		output, err := ExecuteCommand(config.CliApp, config.Node, txsCommand)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to fetch txs at height %s", heightStr)
+			return []types.TxResult{}, err
+		}
+
+		var txsResult types.TxSearchResult
+		if err := json.Unmarshal(output, &txsResult); err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal txs result")
+			return []types.TxResult{}, err
+		}
+
+		txsResults = append(txsResults, txsResult.Results...)
+
+		if txsResult.PageNumber == txsResult.PageTotal {
+			break
+		}
+		page++
 	}
 
-	var txsResult types.TxSearchResult
-	if err := json.Unmarshal(output, &txsResult); err != nil {
-		log.Error().Err(err).Msg("Failed to unmarshal txs result")
-		return []types.TxResult{}, err
-	}
-
-	return txsResult.Results, nil
+	return txsResults, nil
 }
 
 func hashTx(txRaw string, upperCase bool) (string, error) {

@@ -38,13 +38,16 @@ type Tx struct {
 }
 
 type TxSearchResult struct {
-	Results []TxResult `json:"txs"`
+	PageNumber string     `json:"page_number"`
+	PageTotal  string     `json:"page_total"`
+	Results    []TxResult `json:"txs"`
 }
 
 type TxResult struct {
-	Height string `json:"height"`
-	Hash   string `json:"txhash"`
-	Code   int    `json:"code"`
-	Data   string `json:"data"`
-	Log    string `json:"raw_log"`
+	Height    string `json:"height"`
+	Hash      string `json:"txhash"`
+	Code      int    `json:"code"`
+	Data      string `json:"data"`
+	Log       string `json:"raw_log"`
+	CodeSpace string `json:"codespace"`
 }
