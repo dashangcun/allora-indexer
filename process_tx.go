@@ -78,6 +78,78 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 				return err
 			}
 
+		// reputer_stakes table
+		case strings.HasPrefix(mtype, "/emissions.v") &&
+			(strings.HasSuffix(mtype, "AddStakeRequest") ||
+				strings.HasSuffix(mtype, "RemoveStakeRequest") ||
+				strings.HasSuffix(mtype, "CancelRemoveStakeRequest") ||
+				strings.HasSuffix(mtype, "DelegateStakeRequest") ||
+				strings.HasSuffix(mtype, "RemoveDelegateStakeRequest") ||
+				strings.HasSuffix(mtype, "CancelRemoveDelegateStakeRequest")):
+			log.Info().Msg("Processing StakeEvent...")
+			// Add your processing logic here
+			switch {
+			case strings.HasSuffix(mtype, "AddStakeRequest"):
+				var stakePayload types.AddStakeRequest
+				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+					log.Error().Err(err).Msg("Failed to unmarshal AddStakeRequest")
+					return err
+				}
+				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "ADD_STAKE", "", ""); err != nil {
+					return err
+				}
+
+			case strings.HasSuffix(mtype, "RemoveStakeRequest"):
+				var stakePayload types.RemoveStakeRequest
+				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+					log.Error().Err(err).Msg("Failed to unmarshal RemoveStakeRequest")
+					return err
+				}
+				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "REMOVE_STAKE", "", ""); err != nil {
+					return err
+				}
+
+			case strings.HasSuffix(mtype, "CancelRemoveStakeRequest"):
+				var stakePayload types.CancelRemoveStakeRequest
+				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+					log.Error().Err(err).Msg("Failed to unmarshal CancelRemoveStakeRequest")
+					return err
+				}
+				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, "", "CANCEL_REMOVE_STAKE", "", ""); err != nil {
+					return err
+				}
+
+			case strings.HasSuffix(mtype, "DelegateStakeRequest"):
+				var stakePayload types.DelegateStakeRequest
+				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+					log.Error().Err(err).Msg("Failed to unmarshal DelegateStakeRequest")
+					return err
+				}
+				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "DELEGATE_STAKE", stakePayload.Reputer, ""); err != nil {
+					return err
+				}
+
+			case strings.HasSuffix(mtype, "RemoveDelegateStakeRequest"):
+				var stakePayload types.RemoveDelegateStakeRequest
+				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+					log.Error().Err(err).Msg("Failed to unmarshal RemoveDelegateStakeRequest")
+					return err
+				}
+				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "REMOVE_DELEGATE_STAKE", stakePayload.Reputer, ""); err != nil {
+					return err
+				}
+
+			case strings.HasSuffix(mtype, "CancelRemoveDelegateStakeRequest"):
+				var stakePayload types.CancelRemoveDelegateStakeRequest
+				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+					log.Error().Err(err).Msg("Failed to unmarshal CancelRemoveDelegateStakeRequest")
+					return err
+				}
+				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, "", "CANCEL_REMOVE_DELEGATE_STAKE", stakePayload.Reputer, stakePayload.Delegator); err != nil {
+					return err
+				}
+			}
+
 		case strings.HasPrefix(mtype, "/emissions.v") &&
 			(strings.HasSuffix(mtype, "MsgFundTopic") || strings.HasSuffix(mtype, "FundTopicRequest") ||
 				strings.HasSuffix(mtype, "MsgAddStake") || strings.HasSuffix(mtype, "AddStakeRequest")):
@@ -580,6 +652,43 @@ func insertMsgSend(height uint64, messageId uint64, msg types.MsgSend) error {
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to insert insertMsgSend")
+		return err
+	}
+	return nil
+}
+
+func insertStakeRequest(height uint64, sender string, topicId string, amount string, requestType string, reputer string, delegator string) error {
+	topicIdInt, err := strconv.Atoi(topicId)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert topicId to int")
+		return err
+	}
+
+	// Convert empty strings to NULL using sql.NullString
+	reputerNull := sql.NullString{String: reputer, Valid: reputer != ""}
+	delegatorNull := sql.NullString{String: delegator, Valid: delegator != ""}
+	amountNull := sql.NullString{String: amount, Valid: amount != ""}
+
+	_, err = dbPool.Exec(context.Background(), `
+		INSERT INTO `+TB_REPUTER_STAKES+` (
+			type,
+			topic_id,
+			sender,
+			amount,
+			reputer_address,
+			delegator_address,
+			height
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		requestType,   // type (text)
+		topicIdInt,    // topic_id (integer)
+		sender,        // sender (text)
+		amountNull,    // amount (numeric, nullable)
+		reputerNull,   // reputer_address (text, nullable)
+		delegatorNull, // delegator_address (text, nullable)
+		height,        // height (integer)
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to insert stake request")
 		return err
 	}
 	return nil

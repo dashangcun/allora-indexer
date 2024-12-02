@@ -164,3 +164,47 @@ type MsgRegister struct {
 	MultiAddress string `json:"multi_address,omitempty"`
 	IsReputer    bool   `json:"is_reputer,omitempty"`
 }
+
+type AddStakeRequest struct {
+	Type    string `json:"@type,omitempty"`
+	Sender  string `json:"sender,omitempty"`
+	TopicID string `json:"topic_id,omitempty"`
+	Amount  string `json:"amount,omitempty"`
+}
+
+type RemoveStakeRequest struct {
+	Type    string `json:"@type,omitempty"`
+	Sender  string `json:"sender,omitempty"`
+	TopicID string `json:"topic_id,omitempty"`
+	Amount  string `json:"amount,omitempty"`
+}
+
+type CancelRemoveStakeRequest struct {
+	Type    string `json:"@type,omitempty"`
+	Sender  string `json:"sender,omitempty"`
+	TopicID string `json:"topic_id,omitempty"`
+}
+
+type DelegateStakeRequest struct {
+	Type    string `json:"@type,omitempty"`
+	Sender  string `json:"sender,omitempty"`
+	Reputer string `json:"reputer,omitempty"`
+	TopicID string `json:"topic_id,omitempty"`
+	Amount  string `json:"amount,omitempty"`
+}
+
+type RemoveDelegateStakeRequest struct {
+	Type    string `json:"@type,omitempty"`
+	Sender  string `json:"sender,omitempty"`
+	TopicID string `json:"topic_id,omitempty"`
+	Reputer string `json:"reputer,omitempty"`
+	Amount  string `json:"amount,omitempty"`
+}
+
+type CancelRemoveDelegateStakeRequest struct {
+	Type      string `json:"@type,omitempty"`
+	Sender    string `json:"sender,omitempty"`
+	TopicID   string `json:"topic_id,omitempty"`
+	Delegator string `json:"delegator,omitempty"`
+	Reputer   string `json:"reputer,omitempty"`
+}
