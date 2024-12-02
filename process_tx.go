@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -18,7 +21,7 @@ import (
 const MAX_RETRY int = 3
 const RETRY_PAUSE int = 2
 
-func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData string) error {
+func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData string, txsResults map[string]types.TxResult) error {
 
 	// Use the context to check for cancellation
 	select {
@@ -34,6 +37,27 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 	txMessage, err := DecodeTx(config, txData, height)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to execute command")
+		return err
+	}
+
+	// Calculate the tx hash
+	txHash, err := hashTx(txData, true)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to hash tx")
+		return err
+	}
+
+	// Get the tx result from the txsResults map
+	txResult, ok := txsResults[txHash]
+	if !ok {
+		log.Error().Msgf("Tx not found in txsResults, height: %d, txHash: %s", height, txHash)
+		return nil
+	}
+
+	// Marshal the tx result
+	jsonResult, err := json.Marshal(txResult)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal txResult")
 		return err
 	}
 
@@ -57,10 +81,15 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 		}
 
 		var messageId uint64
-		messageId, err = insertMessage(height, mtype, creator, string(mjson))
+		messageId, err = insertMessage(height, mtype, creator, string(mjson), string(jsonResult), txHash)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to insertMessage, height: %d", height)
 			return err
+		}
+
+		if txResult.Code != 0 {
+			// If the tx failed, skip the rest of the processing
+			continue
 		}
 
 		switch {
@@ -692,4 +721,70 @@ func insertStakeRequest(height uint64, sender string, topicId string, amount str
 		return err
 	}
 	return nil
+}
+
+func fetchTxsResults(config ClientConfig, height uint64) ([]types.TxResult, error) {
+	// Convert height to string
+	heightStr := strconv.FormatUint(height, 10)
+
+	// Clone the original command and replace {height} placeholder
+	txsCommand := make([]string, len(config.Commands["txsByHeight"].Parts))
+	copy(txsCommand, config.Commands["txsByHeight"].Parts)
+	for i, part := range txsCommand {
+		if part == "tx.height={height}" {
+			txsCommand[i] = "tx.height=" + heightStr
+		}
+	}
+
+	page := 1
+	txsResults := []types.TxResult{}
+	for {
+		// Assuming the last part of the command is the page number
+		txsCommand[len(txsCommand)-1] = strconv.Itoa(page)
+
+		// Execute the command with the updated height
+		log.Info().Str("commandName", "txsByHeight").Msgf("Fetching txs at height %s", heightStr)
+		output, err := ExecuteCommand(config.CliApp, config.Node, txsCommand)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to fetch txs at height %s", heightStr)
+			return []types.TxResult{}, err
+		}
+
+		var txsResult types.TxSearchResult
+		if err := json.Unmarshal(output, &txsResult); err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal txs result")
+			return []types.TxResult{}, err
+		}
+
+		txsResults = append(txsResults, txsResult.Results...)
+
+		if txsResult.PageNumber == txsResult.PageTotal {
+			break
+		}
+		page++
+	}
+
+	return txsResults, nil
+}
+
+func hashTx(txRaw string, upperCase bool) (string, error) {
+	if txRaw == "" {
+		return "", nil
+	}
+
+	// Decode the txRaw from Base64
+	decoded, err := base64.StdEncoding.DecodeString(txRaw)
+	if err != nil {
+		return "", err
+	}
+
+	// Compute SHA256 hash of the decoded bytes
+	hash := sha256.Sum256(decoded)
+	txHash := hex.EncodeToString(hash[:])
+
+	// Convert to uppercase if required
+	if upperCase {
+		return strings.ToUpper(txHash), nil
+	}
+	return txHash, nil
 }

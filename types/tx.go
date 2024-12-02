@@ -5,10 +5,10 @@ type Message map[string]interface{}
 type Tx struct {
 	Body struct {
 		Messages                    []Message `json:"messages,omitempty"`
-		Memo                        string `json:"memo,omitempty"`
-		TimeoutHeight               string `json:"timeout_height,omitempty"`
-		ExtensionOptions            []any  `json:"extension_options,omitempty"`
-		NonCriticalExtensionOptions []any  `json:"non_critical_extension_options,omitempty"`
+		Memo                        string    `json:"memo,omitempty"`
+		TimeoutHeight               string    `json:"timeout_height,omitempty"`
+		ExtensionOptions            []any     `json:"extension_options,omitempty"`
+		NonCriticalExtensionOptions []any     `json:"non_critical_extension_options,omitempty"`
 	} `json:"body,omitempty"`
 	AuthInfo struct {
 		SignerInfos []struct {
@@ -35,4 +35,19 @@ type Tx struct {
 		Tip any `json:"tip,omitempty"`
 	} `json:"auth_info,omitempty"`
 	Signatures []string `json:"signatures,omitempty"`
+}
+
+type TxSearchResult struct {
+	PageNumber string     `json:"page_number"`
+	PageTotal  string     `json:"page_total"`
+	Results    []TxResult `json:"txs"`
+}
+
+type TxResult struct {
+	Height    string `json:"height"`
+	Hash      string `json:"txhash"`
+	Code      int    `json:"code"`
+	Data      string `json:"data"`
+	Log       string `json:"raw_log"`
+	CodeSpace string `json:"codespace"`
 }

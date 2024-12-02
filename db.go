@@ -230,7 +230,9 @@ func createMessagesTablesSQL() string {
 		type VARCHAR(255),
 		sender VARCHAR(255),
 		data JSONB,
-		hash NUMERIC
+		hash NUMERIC,
+		result JSONB,
+		tx_hash VARCHAR(255)
 	);
 
 	CREATE TABLE IF NOT EXISTS ` + TB_TOPICS + ` (
@@ -648,7 +650,7 @@ func insertBlockInfo(blockInfo DBBlockInfo) error {
 	return nil
 }
 
-func insertMessage(height uint64, mtype string, sender string, data string) (uint64, error) {
+func insertMessage(height uint64, mtype string, sender string, data string, result string, txHash string) (uint64, error) {
 	// Write Topic to the database
 	var id uint64
 	var dataHash = hash(data)
@@ -659,13 +661,17 @@ func insertMessage(height uint64, mtype string, sender string, data string) (uin
 			type,
 			sender,
 			data,
-			hash
-		) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			hash,
+			result,
+			tx_hash
+		) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
 		height,
 		mtype,
 		sender,
 		data,
 		dataHash,
+		result,
+		txHash,
 	).Scan(&id)
 	if err != nil {
 		log.Error().Msgf("Failed inserting message, height:%d, hash: %d", height, dataHash)
