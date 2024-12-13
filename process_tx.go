@@ -758,7 +758,7 @@ func fetchTxsResults(config ClientConfig, height uint64) ([]types.TxResult, erro
 
 		txsResults = append(txsResults, txsResult.Results...)
 
-		if txsResult.PageNumber >= txsResult.PageTotal {
+		if txsResult.PageNumber == txsResult.PageTotal || txsResult.PageTotal == "0" {
 			break
 		}
 		page++
