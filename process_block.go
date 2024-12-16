@@ -58,7 +58,7 @@ func fetchBlock(config ClientConfig, height uint64) (types.BlockQuery, error) {
 	// processBlockQuery(config, blockQuery)
 }
 
-func writeBlock(config ClientConfig, blockQuery types.BlockQuery) error {
+func writeBlock(_ ClientConfig, blockQuery types.BlockQuery) error {
 	// Process the block information (e.g., insert into database)
 	// Assuming `insertBlockInfo` is defined elsewhere
 	height, err := strconv.ParseUint(blockQuery.Header.Height, 10, 64)

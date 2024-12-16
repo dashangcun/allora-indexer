@@ -9,7 +9,7 @@ type BlockInfo struct {
 			Total int    `json:"total,omitempty"`
 			Hash  string `json:"hash,omitempty"`
 		} `json:"part_set_header,omitempty"`
-	} `json:"block_id,omitemxpty"`
+	} `json:"block_id,omitempty"`
 	Block struct {
 		Header struct {
 			Version struct {

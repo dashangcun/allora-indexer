@@ -16,9 +16,7 @@ func ExecuteCommand(cliApp, node string, parts []string) ([]byte, error) {
 	}
 
 	var completeParts []string
-	for _, part := range parts {
-		completeParts = append(completeParts, part)
-	}
+	completeParts = append(completeParts, parts...)
 
 	completeParts = replacePlaceholders(completeParts, "{node}", node)
 	completeParts = replacePlaceholders(completeParts, "{cliApp}", cliApp)

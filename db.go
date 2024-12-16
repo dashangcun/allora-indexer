@@ -1270,7 +1270,10 @@ func insertNetworkLoss(events []EventRecord) error {
 		}
 
 		log.Debug().Msgf("Inserting NetworkLoss bundle: %d, %v", bundleId, valueBundle)
-		insertValueBundle(bundleId, valueBundle, TB_NETWORKLOSS_BUNDLE_VALUES)
+		err = insertValueBundle(bundleId, valueBundle, TB_NETWORKLOSS_BUNDLE_VALUES)
+		if err != nil {
+			return fmt.Errorf("network loss bundle insert failed: %v", err)
+		}
 	}
 	return nil
 }

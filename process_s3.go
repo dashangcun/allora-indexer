@@ -23,8 +23,14 @@ type progressReader struct {
 
 func (pr *progressReader) Read(p []byte) (int, error) {
 	n, err := pr.reader.Read(p)
-	pr.bar.Add(n)
-	return n, err
+	if err != nil {
+		return 0, err
+	}
+	err = pr.bar.Add(n)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 func restoreBackupFromS3() (string, error) {
