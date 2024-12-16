@@ -51,7 +51,7 @@ func insertMsgCreateNewTopic(height uint64, messageId uint64, topic types.MsgCre
 		}
 
 		if topic.Metadata == t.Topic.Metadata {
-			err := insertAddress("allora", sql.NullString{topic.Creator, true}, sql.NullString{"", false}, "")
+			err := insertAddress("allora", sql.NullString{String: topic.Creator, Valid: true}, sql.NullString{String: "", Valid: false}, "")
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to insert insertMsgSend insertAddress")
 				return err

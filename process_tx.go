@@ -21,7 +21,7 @@ import (
 const MAX_RETRY int = 3
 const RETRY_PAUSE int = 2
 
-func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData string, txsResults map[string]types.TxResult) error {
+func processTx(ctx context.Context, _ *sync.WaitGroup, height uint64, txData string, txsResults map[string]types.TxResult) error {
 
 	// Use the context to check for cancellation
 	select {
@@ -100,8 +100,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			log.Info().Msg("Processing MsgCreateNewTopic...")
 			// Add your processing logic here
 			var topicPayload types.MsgCreateNewTopic
-			json.Unmarshal(mjson, &topicPayload)
-			insertMsgCreateNewTopic(height, messageId, topicPayload)
+			err = json.Unmarshal(mjson, &topicPayload)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgCreateNewTopic")
+				return err
+			}
+			err = insertMsgCreateNewTopic(height, messageId, topicPayload)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertMsgCreateNewTopic, height: %d", height)
 				return err
@@ -120,61 +124,79 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			switch {
 			case strings.HasSuffix(mtype, "AddStakeRequest"):
 				var stakePayload types.AddStakeRequest
-				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+				err = json.Unmarshal(mjson, &stakePayload)
+				if err != nil {
 					log.Error().Err(err).Msg("Failed to unmarshal AddStakeRequest")
 					return err
 				}
-				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "ADD_STAKE", "", ""); err != nil {
+				err = insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "ADD_STAKE", "", "")
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to insertStakeRequest, height: %d", height)
 					return err
 				}
 
 			case strings.HasSuffix(mtype, "RemoveStakeRequest"):
 				var stakePayload types.RemoveStakeRequest
-				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+				err = json.Unmarshal(mjson, &stakePayload)
+				if err != nil {
 					log.Error().Err(err).Msg("Failed to unmarshal RemoveStakeRequest")
 					return err
 				}
-				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "REMOVE_STAKE", "", ""); err != nil {
+				err = insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "REMOVE_STAKE", "", "")
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to insertStakeRequest, height: %d", height)
 					return err
 				}
 
 			case strings.HasSuffix(mtype, "CancelRemoveStakeRequest"):
 				var stakePayload types.CancelRemoveStakeRequest
-				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+				err = json.Unmarshal(mjson, &stakePayload)
+				if err != nil {
 					log.Error().Err(err).Msg("Failed to unmarshal CancelRemoveStakeRequest")
 					return err
 				}
-				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, "", "CANCEL_REMOVE_STAKE", "", ""); err != nil {
+				err = insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, "", "CANCEL_REMOVE_STAKE", "", "")
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to insertStakeRequest, height: %d", height)
 					return err
 				}
 
 			case strings.HasSuffix(mtype, "DelegateStakeRequest"):
 				var stakePayload types.DelegateStakeRequest
-				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+				err = json.Unmarshal(mjson, &stakePayload)
+				if err != nil {
 					log.Error().Err(err).Msg("Failed to unmarshal DelegateStakeRequest")
 					return err
 				}
-				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "DELEGATE_STAKE", stakePayload.Reputer, ""); err != nil {
+				err = insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "DELEGATE_STAKE", stakePayload.Reputer, "")
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to insertStakeRequest, height: %d", height)
 					return err
 				}
 
 			case strings.HasSuffix(mtype, "RemoveDelegateStakeRequest"):
 				var stakePayload types.RemoveDelegateStakeRequest
-				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+				err = json.Unmarshal(mjson, &stakePayload)
+				if err != nil {
 					log.Error().Err(err).Msg("Failed to unmarshal RemoveDelegateStakeRequest")
 					return err
 				}
-				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "REMOVE_DELEGATE_STAKE", stakePayload.Reputer, ""); err != nil {
+				err = insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, stakePayload.Amount, "REMOVE_DELEGATE_STAKE", stakePayload.Reputer, "")
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to insertStakeRequest, height: %d", height)
 					return err
 				}
 
 			case strings.HasSuffix(mtype, "CancelRemoveDelegateStakeRequest"):
 				var stakePayload types.CancelRemoveDelegateStakeRequest
-				if err := json.Unmarshal(mjson, &stakePayload); err != nil {
+				err = json.Unmarshal(mjson, &stakePayload)
+				if err != nil {
 					log.Error().Err(err).Msg("Failed to unmarshal CancelRemoveDelegateStakeRequest")
 					return err
 				}
-				if err := insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, "", "CANCEL_REMOVE_DELEGATE_STAKE", stakePayload.Reputer, stakePayload.Delegator); err != nil {
+				err = insertStakeRequest(height, stakePayload.Sender, stakePayload.TopicID, "", "CANCEL_REMOVE_DELEGATE_STAKE", stakePayload.Reputer, stakePayload.Delegator)
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to insertStakeRequest, height: %d", height)
 					return err
 				}
 			}
@@ -186,8 +208,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			log.Info().Msg("Processing MsgFundTopic...")
 			// Add your processing logic here
 			var msgFundTopic types.MsgFundTopic
-			json.Unmarshal(mjson, &msgFundTopic)
-			insertMsgFundTopic(height, messageId, msgFundTopic)
+			err = json.Unmarshal(mjson, &msgFundTopic)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgFundTopic")
+				return err
+			}
+			err = insertMsgFundTopic(height, messageId, msgFundTopic)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertMsgFundTopic, height: %d", height)
 				return err
@@ -199,8 +225,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			log.Info().Msg("Processing MsgSend...")
 			// Add your processing logic here
 			var msgSend types.MsgSend
-			json.Unmarshal(mjson, &msgSend)
-			insertMsgSend(height, messageId, msgSend)
+			err = json.Unmarshal(mjson, &msgSend)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgSend")
+				return err
+			}
+			err = insertMsgSend(height, messageId, msgSend)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertMsgSend, height: %d", height)
 				return err
@@ -211,8 +241,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			// Process MsgProcessInferences
 			log.Info().Msg("Processing MsgRegister...")
 			var msgRegister types.MsgRegister
-			json.Unmarshal(mjson, &msgRegister)
-			insertMsgRegister(height, messageId, msgRegister)
+			err = json.Unmarshal(mjson, &msgRegister)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgRegister")
+				return err
+			}
+			err = insertMsgRegister(height, messageId, msgRegister)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertMsgRegister, height: %d", height)
 				return err
@@ -223,8 +257,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			// Process MsgProcessInferences
 			log.Info().Msg("Processing MsgInsertBulkWorkerPayload...")
 			var workerPayload types.MsgInsertBulkWorkerPayload
-			json.Unmarshal(mjson, &workerPayload)
-			insertBulkWorkerPayload(height, messageId, workerPayload)
+			err = json.Unmarshal(mjson, &workerPayload)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgInsertBulkWorkerPayload")
+				return err
+			}
+			err = insertBulkWorkerPayload(height, messageId, workerPayload)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertBulkWorkerPayload, height: %d", height)
 				return err
@@ -235,8 +273,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			// Process MsgProcessInferences
 			log.Info().Msg("Processing MsgInsertWorkerPayload...")
 			var workerPayload types.MsgInsertWorkerPayload
-			json.Unmarshal(mjson, &workerPayload)
-			insertWorkerPayload(height, messageId, workerPayload)
+			err = json.Unmarshal(mjson, &workerPayload)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgInsertWorkerPayload")
+				return err
+			}
+			err = insertWorkerPayload(height, messageId, workerPayload)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertWorkerPayload, height: %d", height)
 				return err
@@ -247,8 +289,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			// Process MsgInsertReputerPayload
 			log.Info().Msg("Processing MsgInsertBulkReputerPayload...")
 			var reputerPayload types.MsgInsertBulkReputerPayload
-			json.Unmarshal(mjson, &reputerPayload)
-			insertBulkReputerPayload(height, messageId, reputerPayload)
+			err = json.Unmarshal(mjson, &reputerPayload)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgInsertBulkReputerPayload")
+				return err
+			}
+			err = insertBulkReputerPayload(height, messageId, reputerPayload)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertBulkReputerPayload, height: %d", height)
 				return err
@@ -259,8 +305,12 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 			// Process MsgInsertReputerPayload
 			log.Info().Msg("Processing MsgInsertReputerPayload...")
 			var reputerPayload types.MsgInsertReputerPayload
-			json.Unmarshal(mjson, &reputerPayload)
-			insertReputerPayload(height, messageId, reputerPayload)
+			err = json.Unmarshal(mjson, &reputerPayload)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal MsgInsertReputerPayload")
+				return err
+			}
+			err = insertReputerPayload(height, messageId, reputerPayload)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to insertReputerPayload, height: %d", height)
 				return err
@@ -276,7 +326,15 @@ func processTx(ctx context.Context, wg *sync.WaitGroup, height uint64, txData st
 func insertBulkReputerPayload(blockHeight uint64, messageId uint64, msg types.MsgInsertBulkReputerPayload) error {
 
 	worker_nonce_block_height, err := strconv.Atoi(msg.ReputerRequestNonce.WorkerNonce.BlockHeight)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert msg.ReputerRequestNonce.WorkerNonce.BlockHeight to int")
+		return err
+	}
 	reputer_nonce_block_height, err := strconv.Atoi(msg.ReputerRequestNonce.ReputerNonce.BlockHeight)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to convert msg.ReputerRequestNonce.ReputerNonce.BlockHeight to int")
+		return err
+	}
 	var payloadId uint64
 	err = dbPool.QueryRow(context.Background(), `
 		INSERT INTO `+TB_REPUTER_PAYLOAD+` (
@@ -299,8 +357,16 @@ func insertBulkReputerPayload(blockHeight uint64, messageId uint64, msg types.Ms
 	for _, bundle := range msg.ReputerValueBundles {
 		log.Info().Msgf("Inserting bundle: %v", bundle)
 		request_worker_nonce_block_height, err := strconv.Atoi(bundle.ValueBundle.ReputerRequestNonce.WorkerNonce.BlockHeight)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to convert bundle.ValueBundle.ReputerRequestNonce.WorkerNonce.BlockHeight to int")
+			return err
+		}
 		request_reputer_nonce_block_height, err := strconv.Atoi(bundle.ValueBundle.ReputerRequestNonce.ReputerNonce.BlockHeight)
-		err = insertAddress("allora", sql.NullString{"", false}, sql.NullString{bundle.Pubkey, true}, "")
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to convert bundle.ValueBundle.ReputerRequestNonce.ReputerNonce.BlockHeight to int")
+			return err
+		}
+		err = insertAddress("allora", sql.NullString{String: "", Valid: false}, sql.NullString{String: bundle.Pubkey, Valid: true}, "")
 		if err != nil {
 			log.Error().Err(err).Uint64("block", blockHeight).Msg("Failed to insert bundle.Pubkey insertAddress")
 			return err
@@ -318,7 +384,7 @@ func insertBulkReputerPayload(blockHeight uint64, messageId uint64, msg types.Ms
 				reputer_request_worker_nonce,
 				reputer_request_reputer_nonce
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-			payloadId, sql.NullString{bundle.Pubkey, true}, bundle.Signature, bundle.ValueBundle.Reputer,
+			payloadId, sql.NullString{String: bundle.Pubkey, Valid: true}, bundle.Signature, bundle.ValueBundle.Reputer,
 			bundle.ValueBundle.TopicID, bundle.ValueBundle.ExtraData, bundle.ValueBundle.NaiveValue,
 			bundle.ValueBundle.CombinedValue, request_worker_nonce_block_height,
 			request_reputer_nonce_block_height,
@@ -350,7 +416,7 @@ func insertReputerPayload(blockHeight uint64, messageId uint64, msg types.MsgIns
 	}
 
 	// Insert address for the pubkey
-	err = insertAddress("allora", sql.NullString{"", false}, sql.NullString{msg.ReputerValueBundle.Pubkey, true}, "")
+	err = insertAddress("allora", sql.NullString{String: "", Valid: false}, sql.NullString{String: msg.ReputerValueBundle.Pubkey, Valid: true}, "")
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to insert bundle.Pubkey insertAddress")
 		return err
@@ -372,7 +438,7 @@ func insertReputerPayload(blockHeight uint64, messageId uint64, msg types.MsgIns
 	_, err = dbPool.Exec(context.Background(), fmt.Sprintf(`
 		INSERT INTO %s (reputer_payload_id, pubkey, signature, reputer, topic_id, extra_data, naive_value, combined_value, reputer_request_reputer_nonce)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, TB_REPUTER_BUNDLES),
-		payloadId, sql.NullString{msg.ReputerValueBundle.Pubkey, true}, msg.ReputerValueBundle.Signature, bundle.Reputer,
+		payloadId, sql.NullString{String: msg.ReputerValueBundle.Pubkey, Valid: true}, msg.ReputerValueBundle.Signature, bundle.Reputer,
 		bundle.TopicID, bundle.ExtraData, bundle.NaiveValue,
 		bundle.CombinedValue, nonce_block_height)
 	if err != nil {
@@ -413,7 +479,7 @@ func insertBulkWorkerPayload(blockHeight uint64, messageId uint64, inf types.Msg
 				return err
 			}
 		}
-		waitCreation("block_info", "height", strconv.FormatUint(blockHeight, 10))
+		err = waitCreation("block_info", "height", strconv.FormatUint(blockHeight, 10))
 		if err != nil {
 			log.Error().Err(err).Msg("height is still not exist in block_info blockHeight. Exiting...")
 			return err
@@ -536,7 +602,7 @@ func insertWorkerPayload(blockHeight uint64, messageId uint64, inf types.MsgInse
 			return err
 		}
 	}
-	waitCreation("block_info", "height", strconv.FormatUint(blockHeight, 10))
+	err = waitCreation("block_info", "height", strconv.FormatUint(blockHeight, 10))
 	if err != nil {
 		log.Error().Err(err).Msg("height is still not exist in block_info blockHeight. Exiting...")
 		return err
@@ -551,7 +617,7 @@ func insertWorkerPayload(blockHeight uint64, messageId uint64, inf types.MsgInse
 
 func waitCreation(table string, field string, value string) error {
 	var err error
-	for _ = range MAX_RETRY {
+	for range MAX_RETRY {
 		var count int
 		err = dbPool.QueryRow(context.Background(),
 			fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s = %s", table, field, value),
@@ -566,7 +632,7 @@ func waitCreation(table string, field string, value string) error {
 }
 
 func insertMsgRegister(height uint64, messageId uint64, msg types.MsgRegister) error {
-	err := insertAddress("allora", sql.NullString{msg.Sender, true}, sql.NullString{"", false}, "")
+	err := insertAddress("allora", sql.NullString{String: msg.Sender, Valid: true}, sql.NullString{String: "", Valid: false}, "")
 	if err != nil {
 		log.Error().Err(err).Uint64("block", height).Msg("Failed to insert insertMsgRegister insertAddress")
 		return err
@@ -631,7 +697,11 @@ func insertMsgFundTopic(height uint64, messageId uint64, msg types.MsgFundTopic)
 		return err
 	}
 
-	insertAddress("allora", sql.NullString{msg.Sender, true}, sql.NullString{"", false}, "")
+	err = insertAddress("allora", sql.NullString{String: msg.Sender, Valid: true}, sql.NullString{String: "", Valid: false}, "")
+	if err != nil {
+		log.Error().Err(err).Uint64("block", height).Msg("Failed to insert insertMsgFundTopic insertAddress")
+		return err
+	}
 
 	err = waitCreation("topics", "id", strconv.Itoa(topId))
 	if err != nil {
@@ -658,12 +728,12 @@ func insertMsgFundTopic(height uint64, messageId uint64, msg types.MsgFundTopic)
 }
 func insertMsgSend(height uint64, messageId uint64, msg types.MsgSend) error {
 
-	err := insertAddress("allora", sql.NullString{msg.FromAddress, true}, sql.NullString{"", false}, "")
+	err := insertAddress("allora", sql.NullString{String: msg.FromAddress, Valid: true}, sql.NullString{String: "", Valid: false}, "")
 	if err != nil {
 		log.Error().Err(err).Uint64("block", height).Msg("Failed to insert insertMsgSend insertAddress")
 		return err
 	}
-	err = insertAddress("allora", sql.NullString{msg.ToAddress, true}, sql.NullString{"", false}, "")
+	err = insertAddress("allora", sql.NullString{String: msg.ToAddress, Valid: true}, sql.NullString{String: "", Valid: false}, "")
 	if err != nil {
 		log.Error().Err(err).Uint64("block", height).Msg("Failed to insert insertMsgSend insertAddress")
 		return err
