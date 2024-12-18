@@ -30,7 +30,7 @@ RUN apt update && \
     rm -rf /var/cache/apt/*
 
 # Install PostgreSQL client
-RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y postgresql-client jq && rm -rf /var/lib/apt/lists/*
 
 # Detect the architecture and download the appropriate binary
 ARG TARGETARCH="amd64"
