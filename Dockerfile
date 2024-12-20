@@ -48,7 +48,7 @@ RUN mkdir -p /usr/local/bin/previous/v2 && \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.6.0/allorad_linux_${TARGETARCH} -o /usr/local/bin/previous/v6/allorad && \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.6.3/allora-chain_0.6.3_linux_${TARGETARCH} -o /usr/local/bin/previous/v0.6.3/allorad && \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.7.0/allora-chain_0.7.0_linux_${TARGETARCH} -o /usr/local/bin/previous/v0.7.0/allorad  && \
-    curl -L https://github.com/allora-network/allora-chain/releases/download/v0.7.0/allora-chain_0.8.0_linux_${TARGETARCH} -o /usr/local/bin/allorad && \
+    curl -L https://github.com/allora-network/allora-chain/releases/download/v0.8.0/allorad_linux_${TARGETARCH} -o /usr/local/bin/allorad && \
     chmod -R 777 /usr/local/bin/allorad && \
     chmod -R 777 /usr/local/bin/previous/v2/allorad && \
     chmod -R 777 /usr/local/bin/previous/v3/allorad && \
