@@ -40,20 +40,23 @@ RUN mkdir -p /usr/local/bin/previous/v2 && \
     mkdir -p /usr/local/bin/previous/v5 && \
     mkdir -p /usr/local/bin/previous/v6 && \
     mkdir -p /usr/local/bin/previous/v0.6.3 && \
+    mkdir -p /usr/local/bin/previous/v0.7.0 && \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.2.14/allorad_linux_${TARGETARCH} -o /usr/local/bin/previous/v2/allorad; \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.3.0/allorad_linux_${TARGETARCH} -o /usr/local/bin/previous/v3/allorad; \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.4.0/allorad_linux_${TARGETARCH} -o /usr/local/bin/previous/v4/allorad; \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.5.0/allorad_linux_${TARGETARCH} -o /usr/local/bin/previous/v5/allorad; \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.6.0/allorad_linux_${TARGETARCH} -o /usr/local/bin/previous/v6/allorad && \
     curl -L https://github.com/allora-network/allora-chain/releases/download/v0.6.3/allora-chain_0.6.3_linux_${TARGETARCH} -o /usr/local/bin/previous/v0.6.3/allorad && \
-    curl -L https://github.com/allora-network/allora-chain/releases/download/v0.7.0/allora-chain_0.7.0_linux_${TARGETARCH} -o /usr/local/bin/allorad && \
+    curl -L https://github.com/allora-network/allora-chain/releases/download/v0.7.0/allora-chain_0.7.0_linux_${TARGETARCH} -o /usr/local/bin/previous/v0.7.0/allorad  && \
+    curl -L https://github.com/allora-network/allora-chain/releases/download/v0.7.0/allora-chain_0.8.0_linux_${TARGETARCH} -o /usr/local/bin/allorad && \
     chmod -R 777 /usr/local/bin/allorad && \
     chmod -R 777 /usr/local/bin/previous/v2/allorad && \
     chmod -R 777 /usr/local/bin/previous/v3/allorad && \
     chmod -R 777 /usr/local/bin/previous/v4/allorad && \
     chmod -R 777 /usr/local/bin/previous/v5/allorad && \
     chmod -R 777 /usr/local/bin/previous/v6/allorad && \
-    chmod -R 777 /usr/local/bin/previous/v0.6.3/allorad
+    chmod -R 777 /usr/local/bin/previous/v0.6.3/allorad && \
+    chmod -R 777 /usr/local/bin/previous/v0.7.0/allorad
 
 COPY --from=gobuilder /src/allora-indexer /usr/local/bin/allora-indexer
 # EXPOSE 8080
