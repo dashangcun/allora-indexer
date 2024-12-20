@@ -80,25 +80,31 @@ func ExecuteCommandByKey[T any](config ClientConfig, key string, params ...strin
 func DecodeTx(config ClientConfig, params string, blockHeight uint64) (types.Tx, error) {
 	var result types.Tx
 
-	// Determine the appropriate version based on block height
+	// Determine the appropriate version based on block height and chain id
 	var alloradPath string
-	switch {
-	case blockHeight >= 1977711:
-		alloradPath = "/usr/local/bin/allorad" // 0.8.0
-	case blockHeight >= 1857950:
-		alloradPath = "/usr/local/bin/previous/v0.7.0/allorad" // 0.7.0
-	case blockHeight >= 1643705:
-		alloradPath = "/usr/local/bin/previous/v0.6.3/allorad" // 0.6.3
-	case blockHeight >= 1574267:
-		alloradPath = "/usr/local/bin/previous/v6/allorad" // 0.6.0
-	case blockHeight >= 1296200:
-		alloradPath = "/usr/local/bin/previous/v5/allorad" // 0.5.0
-	case blockHeight >= 1004550:
-		alloradPath = "/usr/local/bin/previous/v4/allorad" // 0.4.0
-	case blockHeight >= 812000:
-		alloradPath = "/usr/local/bin/previous/v3/allorad" // 0.3.0
-	default:
-		alloradPath = "/usr/local/bin/previous/v2/allorad" // 0.2.14
+	if config.ChainId == chainIdAlloraTestnet1 {
+		switch {
+		case blockHeight >= 1977711:
+			alloradPath = "/usr/local/bin/allorad" // 0.8.0
+		case blockHeight >= 1857950:
+			alloradPath = "/usr/local/bin/previous/v0.7.0/allorad" // 0.7.0
+		case blockHeight >= 1643705:
+			alloradPath = "/usr/local/bin/previous/v0.6.3/allorad" // 0.6.3
+		case blockHeight >= 1574267:
+			alloradPath = "/usr/local/bin/previous/v6/allorad" // 0.6.0
+		case blockHeight >= 1296200:
+			alloradPath = "/usr/local/bin/previous/v5/allorad" // 0.5.0
+		case blockHeight >= 1004550:
+			alloradPath = "/usr/local/bin/previous/v4/allorad" // 0.4.0
+		case blockHeight >= 812000:
+			alloradPath = "/usr/local/bin/previous/v3/allorad" // 0.3.0
+		default:
+			alloradPath = "/usr/local/bin/previous/v2/allorad" // 0.2.14
+		}
+	} else if config.ChainId == chainIdAlloraMainnet1 {
+		alloradPath = "/usr/local/bin/allorad"
+	} else {
+		return result, fmt.Errorf("chain id not supported")
 	}
 
 	// Update the config to use the selected allorad binary
