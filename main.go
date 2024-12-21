@@ -24,6 +24,7 @@ type ClientConfig struct {
 	Node     string
 	CliApp   string
 	Commands map[string]Command
+	ChainId  string
 }
 
 var config ClientConfig
@@ -36,6 +37,11 @@ var parallelJobs uint
 var mode string
 var bootstrapBlockHeight int64
 var maxConcurrentTxPerRoutine uint
+
+const (
+	chainIdAlloraTestnet1 = "allora-testnet-1"
+	chainIdAlloraMainnet1 = "allora-mainnet-1"
+)
 
 func main() {
 	if err := run(); err != nil {
@@ -54,6 +60,7 @@ func run() error {
 		connectionFlag   string
 		exitWhenCaughtUp bool
 		blocks           []string
+		chainId          string
 	)
 
 	pflag.UintVar(&workersNum, "WORKERS_NUM", 1, "Number of workers to process blocks concurrently")
@@ -69,6 +76,7 @@ func run() error {
 	pflag.BoolVar(&exitWhenCaughtUp, "EXIT_APP", false, "Exit when last block is processed. If false will keep processing new blocks.")
 	pflag.Int64Var(&bootstrapBlockHeight, "BOOTSTRAP_BLOCKHEIGHT", 0, "Start synchronizing on an empty db from this block height - if 0, do not use")
 	pflag.UintVar(&maxConcurrentTxPerRoutine, "MAX_CONCURRENT_TX_PROCESSING", 32, "Number of max concurrent routines to process tx")
+	pflag.StringVar(&chainId, "CHAIN_ID", chainIdAlloraTestnet1, "Chain ID")
 
 	pflag.Parse()
 
@@ -82,6 +90,7 @@ func run() error {
 		Bool("EXIT_APP", exitWhenCaughtUp).
 		Int64("BOOTSTRAP_BLOCKHEIGHT", bootstrapBlockHeight).
 		Uint("MAX_CONCURRENT_TX_PROCESSING", maxConcurrentTxPerRoutine).
+		Str("CHAIN_ID", chainId).
 		Msg("Allora Indexer started")
 
 	// define the commands to execute payloads
@@ -112,6 +121,7 @@ func run() error {
 				Parts: []string{"{cliApp}", "query", "txs", "--query", "tx.height={height}", "--node", "{node}", "--output", "json", "--page", "{page}"},
 			},
 		},
+		ChainId: chainId,
 	}
 
 	// Init DB
