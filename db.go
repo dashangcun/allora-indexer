@@ -153,25 +153,17 @@ func closeDB() {
 }
 
 func setupDB() error {
-	err := executeSQL(createBlockInfoTableSQL())
-	if err != nil {
-		return err
-	}
-	err = executeSQL(createConsensusParamsTableSQL())
-	if err != nil {
-		return err
-	}
-	err = executeSQL(createMessagesTablesSQL())
-	if err != nil {
-		return err
-	}
-	err = executeSQL(createEventsTablesSQL())
-	if err != nil {
-		return err
-	}
-	err = addUniqueConstraints()
-	if err != nil {
-		return err
+	// Execute all the SQL statements from the files in the sql-migrations folder
+	sqlFiles := []string{"001_initial-schema-dump.sql"}
+	for _, file := range sqlFiles {
+		sql, err := os.ReadFile(fmt.Sprintf("sql-migrations/%s", file))
+		if err != nil {
+			return err
+		}
+		err = executeSQL(string(sql))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
