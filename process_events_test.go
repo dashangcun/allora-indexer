@@ -25,6 +25,7 @@ func TestFilterEvents(t *testing.T) {
 		"rewards":                           {Type: ValidatorRewardsEvent},
 		"commission":                        {Type: ValidatorCommissionEvent},
 		"withdraw_rewards":                  {Type: ValidatorWithdrawRewardsEvent},
+		"EventTopicInitialEmaScoreSet":      {Type: TopicInitialEmaScoreEvent},
 	}
 
 	tests := []struct {
@@ -55,6 +56,7 @@ func TestFilterEvents(t *testing.T) {
 						{Type: "emissions.v5.EventForecasterNetworkRegretSet"},
 						{Type: "emissions.v5.EventNaiveInfererNetworkRegretSet"},
 						{Type: "emissions.v5.EventTopicInitialRegretSet"},
+						{Type: "emissions.v7.EventTopicInitialEmaScoreSet"},
 					},
 					TxsBlockEvents: []TxEvent{
 						{Events: []Event{
@@ -79,6 +81,7 @@ func TestFilterEvents(t *testing.T) {
 				{Type: "emissions.v5.EventForecasterNetworkRegretSet"},
 				{Type: "emissions.v5.EventNaiveInfererNetworkRegretSet"},
 				{Type: "emissions.v5.EventTopicInitialRegretSet"},
+				{Type: "emissions.v7.EventTopicInitialEmaScoreSet"},
 				{Type: "emissions.v2.EventScoresSet"},
 				{Type: "emissions.v4.EventEMAScoresSet"},
 			},
