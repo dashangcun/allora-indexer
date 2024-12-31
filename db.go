@@ -85,6 +85,7 @@ const (
 	TB_VALIDATOR_REWARDS             = "validator_rewards"
 	TB_VALIDATOR_COMMISSION          = "validator_commission"
 	TB_VALIDATOR_WITHDRAW_COMMISSION = "validator_withdraw_commission"
+	TB_TOPIC_INITIAL_EMA_SCORES      = "topic_initial_ema_scores"
 )
 
 var dbPool *pgxpool.Pool //*pgx.Conn
@@ -154,7 +155,7 @@ func closeDB() {
 
 func setupDB() error {
 	// Execute all the SQL statements from the files in the sql-migrations folder
-	sqlFiles := []string{"001_initial-schema-dump.sql"}
+	sqlFiles := []string{"001_initial-schema-dump.sql", "002_initial_ema_scores.sql"}
 	for _, file := range sqlFiles {
 		sql, err := os.ReadFile(fmt.Sprintf("sql-migrations/%s", file))
 		if err != nil {
@@ -174,429 +175,6 @@ func executeSQL(sqlStatement string) error {
 		return err
 	}
 	return nil
-}
-
-func createBlockInfoTableSQL() string {
-	return `
-	CREATE TABLE IF NOT EXISTS ` + TB_BLOCK_INFO + ` (
-		block_hash VARCHAR(255),
-		block_total_parts INT,
-		block_part_set_header_hash VARCHAR(255),
-		block_version VARCHAR(255),
-		chain_id VARCHAR(255),
-		height BIGINT PRIMARY KEY,
-		block_time TIMESTAMP,
-		last_block_hash VARCHAR(255),
-		last_block_total_parts INT,
-		last_block_part_set_header_hash VARCHAR(255),
-		last_commit_hash VARCHAR(255),
-		data_hash VARCHAR(255),
-		validators_hash VARCHAR(255),
-		next_validators_hash VARCHAR(255),
-		consensus_hash VARCHAR(255),
-		app_hash VARCHAR(255),
-		last_results_hash VARCHAR(255),
-		evidence_hash VARCHAR(255),
-		proposer_address VARCHAR(255)
-	);`
-}
-
-func createConsensusParamsTableSQL() string {
-	return `
-	CREATE TABLE IF NOT EXISTS ` + TB_CONSENSUS_PARAMS + ` (
-		id SERIAL PRIMARY KEY,
-		max_bytes VARCHAR(255),
-		max_gas VARCHAR(255),
-		max_age_duration VARCHAR(255),
-		max_age_num_blocks VARCHAR(255),
-		evidence_max_bytes VARCHAR(255),
-		pub_key_types TEXT
-	);`
-}
-
-func createMessagesTablesSQL() string {
-	return `
-	CREATE TABLE IF NOT EXISTS ` + TB_MESSAGES + ` (
-		id SERIAL PRIMARY KEY,
-		height BIGINT,
-		type VARCHAR(255),
-		sender VARCHAR(255),
-		data JSONB,
-		hash NUMERIC,
-		result JSONB,
-		tx_hash VARCHAR(255)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_TOPICS + ` (
-		id INT PRIMARY KEY,
-		creator VARCHAR(255),
-		metadata VARCHAR(255),
-		loss_logic VARCHAR(255),
-		loss_method VARCHAR(255),
-		inference_logic VARCHAR(255),
-		inference_method VARCHAR(255),
-		epoch_length VARCHAR(255),
-		ground_truth_lag VARCHAR(255),
-		default_arg VARCHAR(255),
-		pnorm VARCHAR(255),
-		alpha_regret VARCHAR(255),
-		preward_reputer VARCHAR(255),
-		preward_inference VARCHAR(255),
-		preward_forecast VARCHAR(255),
-		f_tolerance VARCHAR(255),
-		allow_negative BOOLEAN,
-		message_height INT,
-		message_id INT
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_ADDRESSES + ` (
-		id SERIAL PRIMARY KEY,
-		pub_key VARCHAR(255) NULL DEFAULT null,
-		type VARCHAR(255) NULL DEFAULT null,
-		memo VARCHAR(255) NULL DEFAULT null,
-		address VARCHAR(255) NULL DEFAULT null
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_WORKER_REGISTRATIONS + ` (
-		message_height INT,
-		message_id INT,
-			topic_id INT,
-		sender VARCHAR(255),
-		owner VARCHAR(255),
-		worker_libp2pkey VARCHAR(255),
-		is_reputer BOOLEAN
-	);
-	CREATE INDEX IF NOT EXISTS idx_worker_registrations_topic_id ON ` + TB_WORKER_REGISTRATIONS + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_TRANSFERS + ` (
-		id SERIAL PRIMARY KEY,
-		message_height INT,
-		message_id INT,
-		from_address VARCHAR(255),
-		topic_id INT NULL DEFAULT null,
-		to_address VARCHAR(255) NULL DEFAULT null,
-		amount VARCHAR(255),
-		denom VARCHAR(255)
-	);
-	CREATE INDEX IF NOT EXISTS idx_transfers_topic_id ON ` + TB_TRANSFERS + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_INFERENCES + ` (
-		id SERIAL PRIMARY KEY,
-		message_height INT,
-		message_id INT,
-		nonce_block_height INT,
-		topic_id INT,
-		block_height INT,
-		inferer VARCHAR(255),
-		value TEXT,
-		extra_data TEXT,
-		proof TEXT
-	);
-	CREATE INDEX IF NOT EXISTS idx_inferences_topic_id ON ` + TB_INFERENCES + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_FORECASTS + ` (
-		id SERIAL PRIMARY KEY,
-		message_height INT,
-		message_id INT,
-		nonce_block_height INT,
-		topic_id INT,
-		block_height INT,
-		forecaster VARCHAR(255),
-		extra_data VARCHAR(255)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_FORECAST_VALUES + ` (
-		forecast_id INT,
-		value VARCHAR(255),
-		inferer VARCHAR(255)
-	);
-	CREATE INDEX IF NOT EXISTS idx_forecasts_topic_id ON ` + TB_FORECASTS + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_REPUTER_PAYLOAD + ` (
-		id SERIAL PRIMARY KEY,
-		message_height INT,
-		message_id INT,
-		sender VARCHAR(255),
-		worker_nonce_block_height INT,
-		reputer_nonce_block_height INT,
-		topic_id INT
-	);
-	CREATE INDEX IF NOT EXISTS idx_reputer_payload_topic_id ON ` + TB_REPUTER_PAYLOAD + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_REPUTER_BUNDLES + ` (
-		id SERIAL PRIMARY KEY,
-		reputer_payload_id INT,
-		pubkey VARCHAR(255),
-		signature VARCHAR(255),
-		reputer  VARCHAR(255),
-		topic_id INT,
-		extra_data VARCHAR(255),
-		naive_value  VARCHAR(255),
-		combined_value    VARCHAR(255),
-		reputer_request_worker_nonce  INT,
-		reputer_request_reputer_nonce  INT
-	);
-	CREATE INDEX IF NOT EXISTS idx_reputer_bundles_topic_id ON ` + TB_REPUTER_BUNDLES + ` (topic_id);
-
-	DO $$ BEGIN
-		CREATE TYPE reputerValueType AS ENUM(
-			'InfererValues',
-			'ForecasterValues',
-			'OneOutInfererValues',
-			'OneInForecasterValues',
-			'OneOutForecasterValues'
-		);
-	EXCEPTION
-		WHEN duplicate_object THEN null;
-	END $$;
-
-	CREATE TABLE IF NOT EXISTS ` + TB_BUNDLE_VALUES + ` (
-		bundle_id INT,
-		reputer_value_type reputerValueType,
-		value VARCHAR(255),
-		worker VARCHAR(255)
-	);`
-
-	// FOREIGN KEY (block_height) REFERENCES block_info(height),
-	// FOREIGN KEY (block_height) REFERENCES block_info(height),
-
-	// CREATE TABLE IF NOT EXISTS signer_infos (
-	// 	id SERIAL PRIMARY KEY,
-	// 	auth_info_id INT,
-	// 	public_key_id INT,
-	// 	sequence VARCHAR(255),
-	// 	FOREIGN KEY (auth_info_id) REFERENCES auth_info(id)
-	// );
-
-	// CREATE TABLE IF NOT EXISTS public_keys (
-	// 	id SERIAL PRIMARY KEY,
-	// 	type VARCHAR(255),
-	// 	key TEXT
-	// );
-
-	// CREATE TABLE IF NOT EXISTS auth_info (
-	// 	id SERIAL PRIMARY KEY,
-	// 	gas_limit VARCHAR(255),
-	// 	payer VARCHAR(255),
-	// 	granter VARCHAR(255)
-	// 	-- Note: Tip and Amount handling depends on their structure and is omitted here
-	// );
-	// CREATE TABLE IF NOT EXISTS transactions (
-	// 	id SERIAL PRIMARY KEY,
-	// 	body_id INT,
-	// 	auth_info_id INT,
-	// 	signature TEXT,
-	// 	FOREIGN KEY (body_id) REFERENCES messages(id),
-	// 	FOREIGN KEY (auth_info_id) REFERENCES auth_info(id)
-	// );
-}
-
-func createEventsTablesSQL() string {
-	return `
-	CREATE TABLE IF NOT EXISTS ` + TB_EVENTS + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		height BIGINT,
-		type VARCHAR(255),
-		sender VARCHAR(255),
-		data JSONB,
-		hash NUMERIC
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_SCORES + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		height BIGINT,
-		topic_id INT,
-		type VARCHAR(255),
-		address VARCHAR(255),
-		value NUMERIC(72,18),
-		CONSTRAINT unique_score_entry UNIQUE (height, topic_id, type, address)
-	);
-	CREATE INDEX IF NOT EXISTS idx_scores_topic_id ON ` + TB_SCORES + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_REWARDS + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		height BIGINT,
-		topic_id INT,
-		type VARCHAR(255),
-		address VARCHAR(255),
-		value NUMERIC(72,18),
-		CONSTRAINT unique_reward_entry UNIQUE (height, topic_id, type, address)
-	);
-	CREATE INDEX IF NOT EXISTS idx_rewards_topic_id ON ` + TB_REWARDS + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_NETWORKLOSSES + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		height BIGINT,
-			topic_id INT,
-		naive_value VARCHAR(255),
-		combined_value VARCHAR(255),
-		CONSTRAINT unique_networkloss_entry UNIQUE (height_tx, height, topic_id)
-	);
-	CREATE INDEX IF NOT EXISTS idx_networklosses_topic_id ON ` + TB_NETWORKLOSSES + ` (topic_id);
-
-	DO $$ BEGIN
-		CREATE TYPE networklossBundleValueType AS ENUM(
-			'InfererValues',
-			'ForecasterValues',
-			'OneOutInfererValues',
-			'OneInForecasterValues',
-			'OneOutForecasterValues'
-		);
-	EXCEPTION
-		WHEN duplicate_object THEN null;
-	END $$;
-	
-	CREATE TABLE IF NOT EXISTS ` + TB_NETWORKLOSS_BUNDLE_VALUES + ` (
-		bundle_id INT,
-		reputer_value_type networklossBundleValueType,
-		value VARCHAR(255),
-		worker VARCHAR(255)
-	);
-	
-	CREATE TABLE IF NOT EXISTS ` + TB_EMASCORES + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		height BIGINT,
-		topic_id INT,
-		type VARCHAR(255),
-		address VARCHAR(255),
-		score NUMERIC(72,18),
-		is_active BOOLEAN,
-		CONSTRAINT unique_ema_score_entry UNIQUE (topic_id, type, address, height)
-	);
-	CREATE INDEX IF NOT EXISTS idx_emascores_topic_id ON ` + TB_EMASCORES + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_ACTOR_LAST_COMMIT + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		height BIGINT,
-		topic_id INT,
-		is_worker BOOLEAN,
-		CONSTRAINT unique_actor_last_commit_entry UNIQUE (topic_id, is_worker)
-	);
-	CREATE INDEX IF NOT EXISTS idx_actor_last_commit_topic_id ON ` + TB_ACTOR_LAST_COMMIT + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_TOKENOMICS + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		staked_amount NUMERIC(72,18),
-		circulating_supply NUMERIC(72,18),
-		emissions_amount NUMERIC(72,18),
-		ecosystem_mint_amount NUMERIC(72,18)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_TOPIC_REWARD + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		topic_id INT,
-		reward VARCHAR(255),
-		CONSTRAINT unique_topic_rewards_entry UNIQUE (topic_id, height_tx)
-	);
-	CREATE INDEX IF NOT EXISTS idx_topic_reward_topic_id ON ` + TB_TOPIC_REWARD + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_TOPIC_FORECASTING_SCORES + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		topic_id INT,
-		score VARCHAR(255),
-		CONSTRAINT unique_topic_forecasting_scores_entry UNIQUE (topic_id, height_tx)
-	);
-	CREATE INDEX IF NOT EXISTS idx_topic_forecasting_scores_topic_id ON ` + TB_TOPIC_FORECASTING_SCORES + ` (topic_id);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_ECOSYSTEM_TOKEN_MINT + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		block_height BIGINT,
-		token_amount NUMERIC(72,18)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_REWARD_CURRENT_BLOCK_EMISSION + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		block_height BIGINT,
-		token_amount NUMERIC(72,18)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_LISTENING_COEFFICIENTS + ` (
-		id SERIAL PRIMARY KEY,
-		actor_type VARCHAR(255),
-		topic_id BIGINT,
-		block_height BIGINT,
-		addresses TEXT[],
-		coefficients NUMERIC(72,18)[]
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_INFERER_NETWORK_REGRET + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		block_height BIGINT,
-		topic_id BIGINT,
-		addresses TEXT[],
-		regrets NUMERIC(72,18)[]
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_FORECASTER_NETWORK_REGRET + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		block_height BIGINT,
-		topic_id BIGINT,
-		addresses TEXT[],
-		regrets NUMERIC(72,18)[]
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_NAIVE_INFERER_NETWORK_REGRET + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		block_height BIGINT,
-		topic_id BIGINT,
-		addresses TEXT[],
-		regrets NUMERIC(72,18)[]
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_TOPIC_INITIAL_REGRET + ` (
-		id SERIAL PRIMARY KEY,
-		topic_id BIGINT,
-		height_tx BIGINT,
-		block_height BIGINT,
-		regret NUMERIC(72,18)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_REPUTER_STAKES + ` (
-		id SERIAL PRIMARY KEY,
-		type TEXT NOT NULL,
-		topic_id INTEGER NOT NULL,
-		sender TEXT NOT NULL,
-		amount NUMERIC(72,18) NULL,
-		reputer_address TEXT NULL,
-		delegator_address TEXT NULL,
-		height INTEGER NOT NULL
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_VALIDATOR_REWARDS + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		validator VARCHAR(255),
-		amount NUMERIC(72,18)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_VALIDATOR_COMMISSION + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		validator VARCHAR(255),
-		amount NUMERIC(72,18)
-	);
-
-	CREATE TABLE IF NOT EXISTS ` + TB_VALIDATOR_WITHDRAW_COMMISSION + ` (
-		id SERIAL PRIMARY KEY,
-		height_tx BIGINT,
-		validator VARCHAR(255),
-		amount NUMERIC(72,18)
-	);
-	`
 }
 
 func insertBlockInfo(blockInfo DBBlockInfo) error {
@@ -671,29 +249,6 @@ func insertMessage(height uint64, mtype string, sender string, data string, resu
 	}
 
 	return id, nil
-}
-
-func insertConsensusParams(params DBConsensusParams) error {
-	_, err := dbPool.Exec(context.Background(), `
-        INSERT INTO `+TB_CONSENSUS_PARAMS+` (
-            max_bytes,
-            max_gas,
-            max_age_duration,
-            max_age_num_blocks,
-            evidence_max_bytes,
-            pub_key_types
-        ) VALUES ($1, $2, $3, $4, $5, $6)`,
-		params.MaxBytes,
-		params.MaxGas,
-		params.MaxAgeDuration,
-		params.MaxAgeNumBlocks,
-		params.EvidenceMaxBytes,
-		params.PubKeyTypes,
-	)
-	if err != nil {
-		return fmt.Errorf("insert failed: %v", err)
-	}
-	return nil
 }
 
 func isUniqueViolation(err error) bool {
@@ -802,6 +357,10 @@ func isValidatorWithdrawRewardsEvent(event EventRecord) bool {
 	return event.Type == "withdraw_rewards"
 }
 
+func isTopicInitialEmaScoreEvent(event EventRecord) bool {
+	return isEventType(event.Type, "emissions.v", "EventTopicInitialEmaScoreSet")
+}
+
 func insertEvents(events []EventRecord) error {
 	var scoreEvents []EventRecord
 	var rewardEvents []EventRecord
@@ -821,6 +380,7 @@ func insertEvents(events []EventRecord) error {
 	var validatorRewardsEvents []EventRecord
 	var validatorCommissionEvents []EventRecord
 	var validatorWithdrawRewardsEvents []EventRecord
+	var topicInitialEmaScoreEvents []EventRecord
 
 	// For inserting events in batch:
 	var insertStatements []string
@@ -865,6 +425,8 @@ func insertEvents(events []EventRecord) error {
 			validatorCommissionEvents = append(validatorCommissionEvents, event)
 		} else if isValidatorWithdrawRewardsEvent(event) {
 			validatorWithdrawRewardsEvents = append(validatorWithdrawRewardsEvents, event)
+		} else if isTopicInitialEmaScoreEvent(event) {
+			topicInitialEmaScoreEvents = append(topicInitialEmaScoreEvents, event)
 		} else {
 			log.Info().Msg("Unrecognized event, ignoring")
 			continue
@@ -1034,6 +596,13 @@ func insertEvents(events []EventRecord) error {
 		err := insertValidatorWithdrawRewards(validatorWithdrawRewardsEvents)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to insert validator withdraw rewards events")
+		}
+	}
+
+	if len(topicInitialEmaScoreEvents) > 0 {
+		err := insertTopicInitialEmaScore(topicInitialEmaScoreEvents)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to insert topic initial ema scores")
 		}
 	}
 
@@ -2302,61 +1871,90 @@ func insertValueBundle(
 	return nil
 }
 
-func addUniqueConstraints() error {
-	_, err := dbPool.Exec(context.Background(), `
-				ALTER TABLE `+TB_MESSAGES+` drop CONSTRAINT IF EXISTS messages_height_data`,
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to remove constraint unique from message")
+func insertTopicInitialEmaScore(events []EventRecord) error {
+	log.Info().Msg("Inserting topic initial ema scores in batch")
+	var insertStatements []string
+	var values []interface{}
+
+	placeholderCounter := 1 // Placeholder index starts at 1 in PostgreSQL
+
+	for _, event := range events {
+		log.Trace().Interface("Event score", event).Msg("Processing event score")
+		var attributes []Attribute
+		err := json.Unmarshal(event.Data, &attributes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+
+		var topicID int
+		var actorType string
+		var score big.Float
+		var blockHeight int
+
+		for _, attr := range attributes {
+			switch attr.Key {
+			case "topic_id":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				topicID, err = strconv.Atoi(cleanedValue)
+				if err != nil {
+					return fmt.Errorf("failed to convert topic_id to int: %w", err)
+				}
+			case "actor_type":
+				actorType = strings.Trim(attr.Value, "\"")
+			case "score":
+				var rawScore string
+				err = json.Unmarshal([]byte(attr.Value), &rawScore)
+				if err != nil {
+					return fmt.Errorf("failed to unmarshal scores: %w", err)
+				}
+
+				rawScoreClean := strings.Trim(rawScore, "\"")
+				if isInvalidNumericValue(rawScoreClean) {
+					log.Error().Str("rawScore", rawScore).Msg("Failed to convert score to big.Float")
+					return fmt.Errorf("Invalid Score: %s", rawScoreClean)
+				} else {
+					_, ok := score.SetString(rawScoreClean)
+					if !ok {
+						log.Error().Str("rawScore", rawScore).Msg("Failed to convert score to big.Float")
+						return fmt.Errorf("Invalid Score: %s", rawScoreClean)
+					}
+				}
+			case "block_height":
+				cleanedValue := strings.Trim(attr.Value, "\"")
+				blockHeight, err = strconv.Atoi(cleanedValue)
+				if err != nil {
+					return fmt.Errorf("failed to convert block_height to int: %w", err)
+				}
+			}
+		}
+
+		// Generate the placeholders for this row
+		newStmt := fmt.Sprintf("($%d, $%d, $%d, $%d)", placeholderCounter, placeholderCounter+1,
+			placeholderCounter+2, placeholderCounter+3)
+		insertStatements = append(insertStatements, newStmt)
+		scoreValue := score.Text('f', -1)
+		values = append(values, actorType, topicID, blockHeight, scoreValue)
+		placeholderCounter += 4 // Increase counter for next row
 	}
 
-	_, err = dbPool.Exec(context.Background(), `
-				ALTER TABLE `+TB_MESSAGES+` ADD CONSTRAINT messages_height_data UNIQUE (height, hash)`,
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to add constraint unique to message")
-		return err
-	}
-
-	_, err = dbPool.Exec(context.Background(), `
-				ALTER TABLE `+TB_EVENTS+` drop CONSTRAINT IF EXISTS events_height_data`,
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to remove constraint unique from events")
-	}
-
-	_, err = dbPool.Exec(context.Background(), `
-				ALTER TABLE `+TB_EVENTS+` ADD CONSTRAINT events_height_data UNIQUE (height, hash, type)`,
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to add constraint unique to events")
-		return err
+	if len(insertStatements) > 0 {
+		sqlStatement := fmt.Sprintf(`
+			INSERT INTO %s (actor_type, topic_id, block_height, score) 
+			VALUES %s ON CONFLICT (topic_id, actor_type, block_height)
+			DO UPDATE SET score=EXCLUDED.score`, TB_TOPIC_INITIAL_EMA_SCORES,
+			strings.Join(insertStatements, ","))
+		log.Trace().Str("Event - Initial EMA Scores SQL Statement", sqlStatement).Interface("Values", values).Msg("Executing batch insert for initial ema scores")
+		_, err := dbPool.Exec(context.Background(), sqlStatement, values...)
+		if err != nil {
+			return fmt.Errorf("initial ema scores insert failed: %v", err)
+		}
+	} else {
+		log.Info().Msg("No initial ema scores data to insert")
 	}
 
 	return nil
 }
 
-func isColumnExist(table, column string) (bool, error) {
-	var res = 0
-	err := dbPool.QueryRow(context.Background(), `SELECT COUNT(*) FROM information_schema.columns WHERE table_name=$1 AND column_name = $2`,
-		table, column,
-	).Scan(&res)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to query to check column existence")
-	}
-	return res > 0, nil
-}
-
-func addColumn(table, column, columnType string) error {
-	_, err := dbPool.Exec(context.Background(), `ALTER TABLE `+
-		table+` ADD COLUMN `+column+` `+columnType,
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to add new column")
-	}
-
-	return nil
-}
 func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))

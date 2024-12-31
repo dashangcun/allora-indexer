@@ -116,19 +116,6 @@ func getLatestFileKey(s3Client *s3.S3) (string, error) {
 	return latestFileKey, nil
 }
 
-func gunzipFile(src string) error {
-	cmd := exec.Command("gunzip", src)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run gunzip command: %v", err)
-	}
-
-	log.Info().Msg("DUMP file extracted.")
-	return nil
-}
-
 func restoreBackupToDB(filePath string) error {
 
 	cmd := exec.Command(

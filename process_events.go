@@ -45,6 +45,8 @@ const (
 	NaiveInfererNetworkRegretEvent EventType = "naiveInfererNetworkRegret"
 	// TopicInitialRegretEvent represents a topic initial regret event
 	TopicInitialRegretEvent EventType = "topicInitialRegret"
+	// TopicInitialEmaScoreEvent represents a topic initial ema score event
+	TopicInitialEmaScoreEvent EventType = "topicInitialEmaScore"
 
 	// Validator commission events
 	ValidatorRewardsEvent         EventType = "rewards"
@@ -79,7 +81,7 @@ var event_whitelist = map[string]EventProcessing{
 	"EventForecasterNetworkRegretSet":   {Type: ForecasterNetworkRegretEvent},
 	"EventNaiveInfererNetworkRegretSet": {Type: NaiveInfererNetworkRegretEvent},
 	"EventTopicInitialRegretSet":        {Type: TopicInitialRegretEvent},
-
+	"EventTopicInitialEmaScoreSet":      {Type: TopicInitialEmaScoreEvent},
 	// Validator commission events
 	"rewards":          {Type: ValidatorRewardsEvent},
 	"commission":       {Type: ValidatorCommissionEvent},
