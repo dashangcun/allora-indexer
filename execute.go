@@ -101,10 +101,8 @@ func DecodeTx(config ClientConfig, params string, blockHeight uint64) (types.Tx,
 		default:
 			alloradPath = "/usr/local/bin/previous/v2/allorad" // 0.2.14
 		}
-	} else if config.ChainId == chainIdAlloraMainnet1 {
-		alloradPath = "/usr/local/bin/allorad"
 	} else {
-		return result, fmt.Errorf("chain id not supported")
+		alloradPath = "/usr/local/bin/allorad"
 	}
 
 	// Update the config to use the selected allorad binary

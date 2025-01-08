@@ -59,7 +59,9 @@ RUN mkdir -p /usr/local/bin/previous/v2 && \
     chmod -R 777 /usr/local/bin/previous/v0.7.0/allorad
 
 COPY --from=gobuilder /src/allora-indexer /usr/local/bin/allora-indexer
-COPY --from=gobuilder /src/sql-migrations /usr/local/bin/sql-migrations
+COPY ./sql-migrations /app/sql-migrations
+
+WORKDIR /app
 
 # EXPOSE 8080
 ENTRYPOINT ["allora-indexer"]
