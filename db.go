@@ -293,7 +293,7 @@ func isForecastTaskScoreEvent(event EventRecord) bool {
 	return isEventType(event.Type, "emissions.v", "EventForecastTaskScoreSet")
 }
 
-// isLastCommitEvent checks if the event is a worker/reputer last commit event based on its type.
+// isWorkerLastCommitEvent checks if the event is a worker/reputer last commit event based on its type.
 func isWorkerLastCommitEvent(event EventRecord) bool {
 	return isEventType(event.Type, "emissions.v", "EventWorkerLastCommitSet")
 }
